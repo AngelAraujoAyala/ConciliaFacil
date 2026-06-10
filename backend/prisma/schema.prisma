@@ -1,0 +1,39 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model BankStatement {
+  id        String   @id @default(uuid())
+  filename  String
+  createdAt DateTime @default(now())
+  records   Record[]
+}
+
+model Record {
+  id              String        @id @default(uuid())
+  statementId     String
+  date            DateTime
+  amount          Decimal
+  description     String
+  status          Status        // VERDE, AMARILLO, ROJO
+  statement       BankStatement @relation(fields: [statementId], references: [id])
+}
+
+enum Status {
+  MATCHED
+  PARTIAL
+  MISSING
+}
