@@ -6,34 +6,94 @@
 
 generator client {
   provider = "prisma-client"
-  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 
+// Representa al usuario que se registra vía Supabase Auth
+model User {
+  id             String          @id // Aquí guardaremos el UUID exacto que genera Supabase Auth
+  email          String          @unique
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  
+  // Relaciones
+  bankStatements BankStatement[]
+  invoices       Invoice[]
+
+  @@map("users") // Mapea el nombre de la tabla en minúsculas en Postgres
+}
+
+// El archivo del estado de cuenta que sube el usuario
 model BankStatement {
-  id        String   @id @default(uuid())
-  filename  String
-  createdAt DateTime @default(now())
-  records   Record[]
+  id          String         @id @default(uuid())
+  filename    String
+  periodMonth Int            // Mes del estado de cuenta (1-12)
+  periodYear  Int            // Año del estado de cuenta
+  uploadedAt  DateTime       @default(now())
+  
+  // Relación con el usuario (Aislamiento)
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Relación con los movimientos individuales
+  movements   BankMovement[]
+
+  @@map("bank_statements")
 }
 
-model Record {
-  id              String        @id @default(uuid())
-  statementId     String
-  date            DateTime
-  amount          Decimal
+// Cada fila/movimiento del estado de cuenta bancario
+model BankMovement {
+  id              String           @id @default(uuid())
+  date            DateTime         // Fecha del movimiento bancario
   description     String
-  status          Status        // VERDE, AMARILLO, ROJO
-  statement       BankStatement @relation(fields: [statementId], references: [id])
+  amount          Decimal          @db.Decimal(10, 2)
+  type            MovementType     // INGRESO o EGRESO
+  status          MatchStatus      @default(UNMATCHED) // GREEN = MATCHED, YELLOW = PARTIAL, RED = UNMATCHED
+  
+  // Relaciones
+  statementId     String
+  statement       BankStatement    @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  
+  // Relación opcional con la factura que lo cuadró (uno a uno o uno a muchos según decidas)
+  matchedInvoiceId String?
+  matchedInvoice   Invoice?        @relation(fields: [matchedInvoiceId], references: [id], onDelete: SetNull)
+
+  @@map("bank_movements")
 }
 
-enum Status {
-  MATCHED
-  PARTIAL
-  MISSING
+// Las facturas (XML/PDF extraídos) que se suben para conciliar
+model Invoice {
+  id            String         @id @default(uuid())
+  folio         String?        // Folio fiscal (UUID del SAT o interno)
+  rfcEmisor     String
+  rfcReceptor   String
+  date          DateTime       // Fecha de emisión de la factura
+  amount        Decimal        @db.Decimal(10, 2)
+  filename      String
+  
+  // Relación con el usuario (Aislamiento)
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Relación inversa con el movimiento
+  bankMovements BankMovement[]
+
+  @@map("invoices")
+}
+
+enum MovementType {
+  INGRESO
+  EGRESO
+}
+
+enum MatchStatus {
+  MATCHED   // Verde
+  PARTIAL   // Amarillo
+  UNMATCHED // Rojo
 }
