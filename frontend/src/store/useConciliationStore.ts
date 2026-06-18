@@ -1,73 +1,126 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import type { BankMovement, Invoice, ConciliationRecord } from '../types';
+import { create } from "zustand";
+import {
+  persist,
+  createJSONStorage,
+  type StateStorage,
+} from "zustand/middleware";
+import { get, set, del } from "idb-keyval";
+import { executeReconciliation } from "../features/conciliation/utils/reconciliationEngine";
+import type { BankMovement, InvoiceXML, ConciliationMatch } from "../types";
+
+// 1. Adaptador Senior de IndexedDB para Zustand
+const indexedDBStorage: StateStorage = {
+  getItem: async (name: string): Promise<string | null> => {
+    return (await get(name)) || null;
+  },
+  setItem: async (name: string, value: string): Promise<void> => {
+    await set(name, value);
+  },
+  removeItem: async (name: string): Promise<void> => {
+    await del(name);
+  },
+};
+
+export type ConciliationStep = "BANK_UPLOAD" | "INVOICE_UPLOAD" | "RESULTS";
 
 interface ConciliationState {
-  // Estado actual de la app
-  currentMovements: BankMovement[];
-  currentInvoices: Invoice[];
-  isProcessing: boolean;
-  
-  // Historial en navegador
-  history: ConciliationRecord[];
-  
-  // Acciones
-  setCurrentData: (movements: BankMovement[], invoices: Invoice[]) => void;
-  setProcessing: (processing: boolean) => void;
-  saveToHistory: (title: string, stats: ConciliationRecord['stats']) => void;
-  clearCurrent: () => void;
-  deleteHistoryItem: (id: string) => void;
+  // Estado
+  currentStep: ConciliationStep;
+  movements: BankMovement[];
+  invoices: InvoiceXML[];
+  matches: ConciliationMatch[];
+  remainingInvoices: InvoiceXML[];
+
+  // Acciones de Flujo Basico
+  setCurrentStep: (step: ConciliationStep) => void;
+  setMovements: (movements: BankMovement[]) => void;
+  setInvoices: (invoices: InvoiceXML[]) => void;
+
+  // Acciones Nucleares del Motor
+  runConciliation: () => void;
+  addIncrementalInvoices: (newInvoices: InvoiceXML[]) => { addedCount: number };
+  reset: () => void;
 }
 
 export const useConciliationStore = create<ConciliationState>()(
   persist(
     (set, get) => ({
-      currentMovements: [],
-      currentInvoices: [],
-      isProcessing: false,
-      history: [],
+      // --- ESTADO INICIAL ---
+      currentStep: "BANK_UPLOAD",
+      movements: [],
+      invoices: [],
+      matches: [],
+      remainingInvoices: [],
 
-      setCurrentData: (movements, invoices) => 
-        set({ currentMovements: movements, currentInvoices: invoices }),
+      // --- ACCIONES DE FLUJO ---
+      setCurrentStep: (step) => set({ currentStep: step }),
 
-      setProcessing: (processing) => 
-        set({ isProcessing: processing }),
+      setMovements: (movements) => set({ movements }),
 
-      saveToHistory: (title, stats) => {
-        const { currentMovements, currentInvoices, history } = get();
-        
-        const newRecord: ConciliationRecord = {
-          id: crypto.randomUUID(),
-          title,
-          date: new Date().toISOString(),
-          movements: currentMovements,
-          invoices: currentInvoices,
-          stats
-        };
+      setInvoices: (invoices) => set({ invoices }),
 
-        // Estrategia preventiva: Mantener máximo 15 conciliaciones pesadas en LocalStorage
-        const updatedHistory = [newRecord, ...history];
-        if (updatedHistory.length > 15) {
-          updatedHistory.pop(); // Sacamos el más viejo (FIFO)
-        }
+      // --- ACCION: EJECUTAR MOTOR ---
+      runConciliation: () => {
+        const { movements, invoices } = get();
 
-        set({ history: updatedHistory });
+        // Disparamos tu motor puro
+        const results = executeReconciliation(movements, invoices);
+
+        set({
+          matches: results.matches,
+          remainingInvoices: results.remainingInvoices,
+          currentStep: "RESULTS",
+        });
       },
 
-      clearCurrent: () => 
-        set({ currentMovements: [], currentInvoices: [] }),
+      // --- ACCION: CARGA INCREMENTAL (BLINDADA) ---
+      addIncrementalInvoices: (newInvoices) => {
+        const { matches, remainingInvoices, invoices } = get();
 
-      deleteHistoryItem: (id) => 
-        set((state) => ({
-          history: state.history.filter((item) => item.id !== id)
-        })),
+        // 1. Crear un set de todos los UUIDs que ya existen en el sistema para busqueda O(1)
+        const existingUuids = new Set<string>([
+          ...invoices.map((inv) => inv.uuid),
+          ...remainingInvoices.map((inv) => inv.uuid),
+          ...matches
+            .map((m) => {
+              // Mapeo defensivo: extraemos el UUID de la factura singular del match
+              const matchWithInvoice = m as { invoice?: { uuid: string } };
+              return matchWithInvoice.invoice?.uuid;
+            })
+            .filter((uuid): uuid is string => !!uuid),
+        ]);
+
+        // 2. Filtrar unicamente los XMLs verdaderamente nuevos
+        const uniqueNewInvoices = newInvoices.filter(
+          (inv) => !existingUuids.has(inv.uuid),
+        );
+
+        if (uniqueNewInvoices.length > 0) {
+          set({
+            // Los agregamos al pool global de control
+            invoices: [...invoices, ...uniqueNewInvoices],
+            // Los inyectamos a las facturas huerfanas disponibles para conciliar
+            remainingInvoices: [...remainingInvoices, ...uniqueNewInvoices],
+          });
+        }
+
+        return { addedCount: uniqueNewInvoices.length };
+      },
+
+      // --- ACCION: LIMPIAR TODO ---
+      reset: () => {
+        set({
+          currentStep: "BANK_UPLOAD",
+          movements: [],
+          invoices: [],
+          matches: [],
+          remainingInvoices: [],
+        });
+      },
     }),
     {
-      name: 'concilia-facil-storage',
-      storage: createJSONStorage(() => localStorage),
-      // Solo persistimos el historial. Los datos actuales se pierden al cerrar la pestaña si así se desea,
-      // o puedes persistirlos quitando el partialize.
-      partialize: (state) => ({ history: state.history }),
-    }
-  )
+      name: "conciliafacil-storage", // Llave unica en IndexedDB
+      storage: createJSONStorage(() => indexedDBStorage), // Motor asincrono ilimitado
+    },
+  ),
 );

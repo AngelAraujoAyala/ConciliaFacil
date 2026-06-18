@@ -3,7 +3,7 @@ import LandingPage from "../pages/LandingPage";
 import Layout from "../components/Layout";
 // Importaciones de tus componentes
 import { DashboardPage } from "../features/dashboard/pages/DashboardPage";
-import { ConciliationPage } from "../features/conciliation/pages/ConciliationPage";
+import ConciliationPage from "../features/conciliation/pages/ConciliationPage";
 import { HistoryPage } from "../features/history/pages/HistoryPage";
 import { SupportPage } from "../pages/SupportPage";
 

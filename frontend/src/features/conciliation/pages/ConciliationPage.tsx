@@ -1,121 +1,66 @@
-import { useState } from 'react';
-import FileDropzone from '../components/FileDropzone';
-import { extractBankMovements } from '../utils/extractBankMovements';
-import type { BankMovement } from '../../../types';
+import BankUploadStep from "../components/BankUploadStep";
+import InvoiceUploadStep from "../components/InvoiceUploadStep";
+import ResultsTable from "../components/ResultsTable";
+import { useConciliationStore } from "../../../store/useConciliationStore";
 
-export const ConciliationPage = () => {
-  const [movements, setMovements] = useState<BankMovement[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleBankFileSelected = async (files: File[]) => {
-    if (files.length === 0) return;
-
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Procesamos el primer archivo seleccionado (.csv)
-      const parsedMovements = await extractBankMovements(files[0]);
-      setMovements(parsedMovements);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido al cargar el archivo.');
-      setMovements([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Helper sencillo para dar formato de moneda local ($)
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN'
-    }).format(amount);
-  };
+export default function ConciliationPage() {
+  // Consumimos solo lo necesario para el flujo de la pagina
+  const currentStep = useConciliationStore((state) => state.currentStep);
+  const setCurrentStep = useConciliationStore((state) => state.setCurrentStep);
+  const movements = useConciliationStore((state) => state.movements);
+  const setMovements = useConciliationStore((state) => state.setMovements);
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <header className="border-b border-gray-200 pb-4">
-        <h1 className="text-2xl font-bold text-gray-800">Módulo de Conciliación</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Carga el estado de cuenta bancario para comenzar a extraer la información.
-        </p>
+    <div className="max-w-5xl mx-auto p-6 space-y-6">
+      {/* Encabezado Dinámico */}
+      <header className="border-b border-gray-200 pb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">
+            Módulo de Conciliación
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {currentStep === "BANK_UPLOAD" &&
+              "Paso 1: Carga el estado de cuenta bancario (.csv, .xlsx)"}
+            {currentStep === "INVOICE_UPLOAD" &&
+              "Paso 2: Carga la carpeta de facturas XML del SAT"}
+            {currentStep === "RESULTS" && "Resultados y Auditoría de Cuentas"}
+          </p>
+        </div>
+
+        {/* Indicadores Visuales de Progreso */}
+        <div className="flex items-center space-x-2 text-xs font-medium">
+          <span
+            className={`px-2.5 py-1 rounded-full ${currentStep === "BANK_UPLOAD" ? "bg-blue-100 text-blue-700 font-bold" : "bg-gray-100 text-gray-400"}`}
+          >
+            1. Banco
+          </span>
+          <span className="text-gray-300">➔</span>
+          <span
+            className={`px-2.5 py-1 rounded-full ${currentStep === "INVOICE_UPLOAD" ? "bg-blue-100 text-blue-700 font-bold" : "bg-gray-100 text-gray-400"}`}
+          >
+            2. Facturas
+          </span>
+          <span className="text-gray-300">➔</span>
+          <span
+            className={`px-2.5 py-1 rounded-full ${currentStep === "RESULTS" ? "bg-emerald-100 text-emerald-700 font-bold" : "bg-gray-100 text-gray-400"}`}
+          >
+            3. Resultados
+          </span>
+        </div>
       </header>
 
-      {/* Zona de Carga */}
-      <section>
-        <FileDropzone
-          title="Estado de Cuenta Bancario"
-          description="Arrastra y suelta tu archivo .csv o haz click para explorar"
-          accept=".csv, .xlsx, .xls"
-          multiple={false}
-          icon="🏦"
-          onFilesSelected={handleBankFileSelected}
+      {/* Renderizado Condicional de Pasos */}
+      {currentStep === "BANK_UPLOAD" && (
+        <BankUploadStep
+          movements={movements}
+          onMovementsParsed={setMovements}
+          onNextStep={() => setCurrentStep("INVOICE_UPLOAD")}
         />
-      </section>
-
-      {/* Estado de Carga y Errores */}
-      {isLoading && (
-        <div className="text-center py-4 text-sm text-blue-600 font-medium animate-pulse">
-          Procesando filas del estado de cuenta...
-        </div>
       )}
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
-          {error}
-        </div>
-      )}
+      {currentStep === "INVOICE_UPLOAD" && <InvoiceUploadStep />}
 
-      {/* Lista de Movimientos Extraídos */}
-      {movements.length > 0 && !isLoading && (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-700">
-              Movimientos Detectados ({movements.length})
-            </h2>
-            <button
-              onClick={() => setMovements([])}
-              className="text-xs text-red-500 hover:underline font-medium"
-            >
-              Limpiar datos
-            </button>
-          </div>
-
-          <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100 shadow-sm max-h-125 overflow-y-auto custom-scrollbar">
-            {movements.map((movement) => (
-              <div
-                key={movement.id}
-                className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex flex-col pr-4 min-w-0">
-                  <span className="text-xs font-mono text-gray-400">
-                    {movement.date}
-                  </span>
-                  <span className="text-sm font-medium text-gray-800 truncate mt-0.5">
-                    {movement.description}
-                  </span>
-                </div>
-
-                <div className="flex items-center space-x-3 shrink-0">
-                  <span
-                    className={`text-sm font-semibold ${
-                      movement.type === 'INGRESO' ? 'text-green-600' : 'text-red-600'
-                    }`}
-                  >
-                    {movement.type === 'INGRESO' ? '+' : '-'} {formatCurrency(movement.amount)}
-                  </span>
-                  
-                  <span className="text-[10px] font-bold px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
-                    {movement.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {currentStep === "RESULTS" && <ResultsTable />}
     </div>
   );
 }
