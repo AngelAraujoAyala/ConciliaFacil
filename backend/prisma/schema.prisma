@@ -1,99 +1,45 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
+enum ConciliationStatus {
+  DRAFT      // En proceso
+  COMPLETED  // Cerrada/Auditada
+}
 
-// Representa al usuario que se registra vía Supabase Auth
 model User {
-  id             String          @id // Aquí guardaremos el UUID exacto que genera Supabase Auth
-  email          String          @unique
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id                    String        @id @default(uuid())
+  email                 String        @unique
+  isSubscribed          Boolean       @default(false)
+  freeConciliationsLeft Int           @default(1)
+  conciliations         Conciliation[]
   
-  // Relaciones
-  bankStatements BankStatement[]
-  invoices       Invoice[]
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
 
-  @@map("users") // Mapea el nombre de la tabla en minúsculas en Postgres
+  @@map("users")
 }
 
-// El archivo del estado de cuenta que sube el usuario
-model BankStatement {
-  id          String         @id @default(uuid())
-  filename    String
-  periodMonth Int            // Mes del estado de cuenta (1-12)
-  periodYear  Int            // Año del estado de cuenta
-  uploadedAt  DateTime       @default(now())
+model Conciliation {
+  id               String             @id @default(uuid())
+  title            String
+  status           ConciliationStatus @default(DRAFT)
+  matches          Json               // Guarda array de ConciliationMatch[]
+  remainingInvoices Json              // Guarda array de InvoiceXML[]
+  successRate      Int                // Almacena KPI final
+
+  // RELACIÓN CON EL DUEÑO DE LA INFORMACIÓN
+  userId           String
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  // Relación con el usuario (Aislamiento)
-  userId      String
-  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  // Relación con los movimientos individuales
-  movements   BankMovement[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
 
-  @@map("bank_statements")
-}
-
-// Cada fila/movimiento del estado de cuenta bancario
-model BankMovement {
-  id              String           @id @default(uuid())
-  date            DateTime         // Fecha del movimiento bancario
-  description     String
-  amount          Decimal          @db.Decimal(10, 2)
-  type            MovementType     // INGRESO o EGRESO
-  status          MatchStatus      @default(UNMATCHED) // GREEN = MATCHED, YELLOW = PARTIAL, RED = UNMATCHED
-  
-  // Relaciones
-  statementId     String
-  statement       BankStatement    @relation(fields: [statementId], references: [id], onDelete: Cascade)
-  
-  // Relación opcional con la factura que lo cuadró (uno a uno o uno a muchos según decidas)
-  matchedInvoiceId String?
-  matchedInvoice   Invoice?        @relation(fields: [matchedInvoiceId], references: [id], onDelete: SetNull)
-
-  @@map("bank_movements")
-}
-
-// Las facturas (XML/PDF extraídos) que se suben para conciliar
-model Invoice {
-  id            String         @id @default(uuid())
-  folio         String?        // Folio fiscal (UUID del SAT o interno)
-  rfcEmisor     String
-  rfcReceptor   String
-  date          DateTime       // Fecha de emisión de la factura
-  amount        Decimal        @db.Decimal(10, 2)
-  filename      String
-  
-  // Relación con el usuario (Aislamiento)
-  userId        String
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  // Relación inversa con el movimiento
-  bankMovements BankMovement[]
-
-  @@map("invoices")
-}
-
-enum MovementType {
-  INGRESO
-  EGRESO
-}
-
-enum MatchStatus {
-  MATCHED   // Verde
-  PARTIAL   // Amarillo
-  UNMATCHED // Rojo
+  @@map("conciliations")
 }

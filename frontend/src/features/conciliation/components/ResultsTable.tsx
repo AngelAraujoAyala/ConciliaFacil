@@ -7,40 +7,75 @@ import type { InvoiceXML } from "../../../types";
 type TabType = "ALL" | "MATCHED" | "ISSUES" | "UNMATCHED_INVOICES";
 
 export default function ResultsTable() {
-  // 🧠 CONEXIÓN AL CEREBRO GLOBAL (ZUSTAND)
+  // 🧠 CONEXIÓN AL STORE GLOBAL
   const matches = useConciliationStore((state) => state.matches);
-  const unmatchedInvoices = useConciliationStore((state) => state.remainingInvoices);
+  const unmatchedInvoices = useConciliationStore(
+    (state) => state.remainingInvoices,
+  );
   const reset = useConciliationStore((state) => state.reset);
-  const addIncrementalInvoices = useConciliationStore((state) => state.addIncrementalInvoices);
+  const addIncrementalInvoices = useConciliationStore(
+    (state) => state.addIncrementalInvoices,
+  );
 
-  // Estados locales de la UI de resultados
   const [activeTab, setActiveTab] = useState<TabType>("ALL");
   const [isAddingInvoices, setIsAddingInvoices] = useState(false);
-  const [dropzoneFeedback, setDropzoneFeedback] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+  const [dropzoneFeedback, setDropzoneFeedback] = useState<{
+    msg: string;
+    type: "success" | "error";
+  } | null>(null);
 
-  // 🧮 RECALCULAR ESTADÍSTICAS DINÁMICAMENTE EN BASE AL STORE
+  // 🧮 RECALCULAR ESTADÍSTICAS BASADAS EN EL ESTADO REAL (STATUS)
   const summary = useMemo(() => {
     const totalBankMovements = matches.length;
-    const fullyConciliated = matches.filter((m) => {
-      if (!m.matchedInvoice) return false;
-      return Math.abs(m.bankMovement.amount - m.matchedInvoice.total) < 0.01;
-    }).length;
 
-    const unreconciledBank = matches.filter((m) => !m.matchedInvoice).length;
-    const reviewNeeded = totalBankMovements - fullyConciliated - unreconciledBank;
+    // Ahora consideramos válidos tanto el Match Perfecto como el Aprobado Manualmente
+    const fullyConciliated = matches.filter(
+      (m) =>
+        m.status === "TOTAL_MATCH" || (m.status as string) === "MANUAL_MATCH",
+    ).length;
+
+    const unreconciledBank = matches.filter(
+      (m) => m.status === "NO_MATCH",
+    ).length;
+    const reviewNeeded = matches.filter(
+      (m) => m.status === "MULTIPLE_MATCHES",
+    ).length;
 
     return {
       totalBankMovements,
-      totalInvoices: matches.filter((m) => m.matchedInvoice).length + unmatchedInvoices.length,
+      totalInvoices:
+        matches.filter((m) => m.matchedInvoice).length +
+        unmatchedInvoices.length,
       fullyConciliated,
       unreconciledBank,
       reviewNeeded,
       unreconciledInvoices: unmatchedInvoices.length,
-      successRate: totalBankMovements > 0 ? Math.round((fullyConciliated / totalBankMovements) * 100) : 0,
+      successRate:
+        totalBankMovements > 0
+          ? Math.round((fullyConciliated / totalBankMovements) * 100)
+          : 0,
     };
   }, [matches, unmatchedInvoices]);
 
-  // 🔄 MANEJADOR DE CONCILIACIÓN MANUAL (Actualiza Zustand directamente)
+  // ⚡ MANEJADOR PARA FORZAR/APROBAR DESFASE MANUALMENTE
+  const handleApproveDiscrepancy = (matchId: string) => {
+    const updatedMatches = matches.map((m) => {
+      if (m.id !== matchId) return m;
+      const diff = m.matchedInvoice
+        ? m.bankMovement.amount - m.matchedInvoice.total
+        : 0;
+
+      return {
+        ...m,
+        status: "MANUAL_MATCH" as any,
+        observations: `Desfase de ${formatCurrency(diff)} aprobado manualmente por el usuario.`,
+      };
+    });
+
+    useConciliationStore.setState({ matches: updatedMatches });
+  };
+
+  // 🔄 MANEJADOR DE ASIGNACIÓN MANUAL DESDE SELECTOR
   const handleManualAssign = (matchId: string, selectedInvoiceId: string) => {
     const currentMatch = matches.find((m) => m.id === matchId);
     if (!currentMatch) return;
@@ -54,36 +89,42 @@ export default function ResultsTable() {
     }
 
     if (selectedInvoiceId !== "none") {
-      const found = updatedUnmatched.find((inv) => inv.id === selectedInvoiceId);
+      const found = updatedUnmatched.find(
+        (inv) => inv.id === selectedInvoiceId,
+      );
       if (found) {
         newInvoice = found;
-        updatedUnmatched = updatedUnmatched.filter((inv) => inv.id !== selectedInvoiceId);
+        updatedUnmatched = updatedUnmatched.filter(
+          (inv) => inv.id !== selectedInvoiceId,
+        );
       }
     }
 
     const updatedMatches = matches.map((m) => {
       if (m.id !== matchId) return m;
 
-      let newStatus: "TOTAL_MATCH" | "NO_MATCH" | "MULTIPLE_MATCHES" = "NO_MATCH";
+      let newStatus: "TOTAL_MATCH" | "NO_MATCH" | "MULTIPLE_MATCHES" =
+        "NO_MATCH";
       let obs = "Asignado manualmente por el usuario.";
 
       if (newInvoice) {
-        const exactAmount = Math.abs(m.bankMovement.amount - newInvoice.total) < 0.01;
+        const exactAmount =
+          Math.abs(m.bankMovement.amount - newInvoice.total) < 0.01;
+        // Si el usuario cambia la factura, vuelve a calcular de forma limpia el estado inicial
         newStatus = exactAmount ? "TOTAL_MATCH" : "MULTIPLE_MATCHES";
         if (!exactAmount) obs = `Match manual con diferencia de pesos.`;
       } else {
         obs = "Sin factura vinculada.";
       }
 
-    return {
-      ...m,
-      matchedInvoice: newInvoice,
-      status: newStatus,
-      observations: obs,
-    };
-  });
+      return {
+        ...m,
+        matchedInvoice: newInvoice,
+        status: newStatus,
+        observations: obs,
+      };
+    });
 
-    // Superpoder de Zustand: Despachamos el cambio directo al almacén global e IndexedDB
     useConciliationStore.setState({
       matches: updatedMatches,
       remainingInvoices: updatedUnmatched,
@@ -96,13 +137,12 @@ export default function ResultsTable() {
     try {
       setIsAddingInvoices(true);
       setDropzoneFeedback(null);
-      
+
       const parsedInvoices = await extractInvoicesXml(files);
       if (parsedInvoices.length === 0) {
         throw new Error("No se encontraron XMLs válidos en la selección.");
       }
 
-      // Ejecutamos la acción blindada del store
       const { addedCount } = addIncrementalInvoices(parsedInvoices);
 
       if (addedCount > 0) {
@@ -138,31 +178,56 @@ export default function ResultsTable() {
       {/* 📊 PANEL DE KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-          <span className="text-xs font-medium text-gray-400 block">Efectividad Automática</span>
+          <span className="text-xs font-medium text-gray-400 block">
+            Efectividad Global
+          </span>
           <div className="flex items-baseline space-x-2 mt-1">
-            <span className="text-2xl font-bold text-gray-800">{summary.successRate}%</span>
+            <span className="text-2xl font-bold text-gray-800">
+              {summary.successRate}%
+            </span>
           </div>
           <div className="w-full bg-gray-100 h-1.5 rounded-full mt-2 overflow-hidden">
-            <div className="bg-emerald-500 h-1.5 rounded-full transition-all" style={{ width: `${summary.successRate}%` }} />
+            <div
+              className="bg-emerald-500 h-1.5 rounded-full transition-all"
+              style={{ width: `${summary.successRate}%` }}
+            />
           </div>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-          <span className="text-xs font-medium text-gray-400 block">Sin Factura (Banco)</span>
-          <span className="text-2xl font-bold text-red-500 mt-1 block">{summary.unreconciledBank}</span>
-          <p className="text-[10px] text-gray-400 mt-1">Requieren asignación manual</p>
+          <span className="text-xs font-medium text-gray-400 block">
+            Sin Factura (Banco)
+          </span>
+          <span className="text-2xl font-bold text-red-500 mt-1 block">
+            {summary.unreconciledBank}
+          </span>
+          <p className="text-[10px] text-gray-400 mt-1">
+            Requieren asignación manual
+          </p>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-          <span className="text-xs font-medium text-gray-400 block">Facturas en Revisión</span>
-          <span className="text-2xl font-bold text-amber-500 mt-1 block">{summary.reviewNeeded}</span>
-          <p className="text-[10px] text-gray-400 mt-1">Desfases de centavos o fechas</p>
+          <span className="text-xs font-medium text-gray-400 block">
+            Desfases Pendientes
+          </span>
+          <span className="text-2xl font-bold text-amber-500 mt-1 block">
+            {summary.reviewNeeded}
+          </span>
+          <p className="text-[10px] text-gray-400 mt-1">
+            Diferencias por revisar/aprobar
+          </p>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm bg-linear-to-br from-blue-50/40 to-emerald-50/20">
-          <span className="text-xs font-medium text-emerald-700 block">Facturas Disponibles (SAT)</span>
-          <span className="text-2xl font-bold text-emerald-600 mt-1 block">{summary.unreconciledInvoices}</span>
-          <p className="text-[10px] text-emerald-600/80 mt-1">Disponibles en el selector</p>
+          <span className="text-xs font-medium text-emerald-700 block">
+            Facturas Disponibles (SAT)
+          </span>
+          <span className="text-2xl font-bold text-emerald-600 mt-1 block">
+            {summary.unreconciledInvoices}
+          </span>
+          <p className="text-[10px] text-emerald-600/80 mt-1">
+            Disponibles en el selector
+          </p>
         </div>
       </div>
 
@@ -185,7 +250,8 @@ export default function ResultsTable() {
             onClick={() => setActiveTab("ISSUES")}
             className={`px-4 py-2 text-xs font-medium rounded-t-xl ${activeTab === "ISSUES" ? "border-b-2 border-amber-500 text-amber-600 font-bold bg-amber-50/20" : "text-gray-500"}`}
           >
-            Alertas / Pendientes ({summary.unreconciledBank + summary.reviewNeeded})
+            Alertas / Pendientes (
+            {summary.unreconciledBank + summary.reviewNeeded})
           </button>
           <button
             onClick={() => setActiveTab("UNMATCHED_INVOICES")}
@@ -208,7 +274,9 @@ export default function ResultsTable() {
           /* ================= VISTA: FACTURAS HUÉRFANAS ================= */
           <div className="overflow-x-auto">
             {unmatchedInvoices.length === 0 ? (
-              <div className="p-8 text-center text-sm text-gray-400">No hay facturas huérfanas libres.</div>
+              <div className="p-8 text-center text-sm text-gray-400">
+                No hay facturas huérfanas libres.
+              </div>
             ) : (
               <table className="w-full text-left border-collapse text-xs">
                 <thead className="bg-gray-50 text-[11px] text-gray-400 font-bold uppercase">
@@ -222,17 +290,27 @@ export default function ResultsTable() {
                 <tbody className="divide-y divide-gray-50">
                   {unmatchedInvoices.map((inv) => (
                     <tr key={inv.id} className="hover:bg-purple-50/10">
-                      <td className="p-4 font-mono text-gray-500">{inv.date}</td>
+                      <td className="p-4 font-mono text-gray-500">
+                        {inv.date}
+                      </td>
                       <td className="p-4">
-                        <span className="font-mono text-gray-400 block">...{inv.uuid.substring(24)}</span>
-                        <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${inv.type === "INGRESO" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+                        <span className="font-mono text-gray-400 block">
+                          ...{inv.uuid.substring(24)}
+                        </span>
+                        <span
+                          className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${inv.type === "INGRESO" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}
+                        >
                           {inv.type}
                         </span>
                       </td>
                       <td className="p-4 font-medium text-gray-700">
-                        {inv.type === "INGRESO" ? inv.nameReceptor : inv.nameEmisor}
+                        {inv.type === "INGRESO"
+                          ? inv.nameReceptor
+                          : inv.nameEmisor}
                       </td>
-                      <td className="p-4 text-right font-bold text-gray-800">{formatCurrency(inv.total)}</td>
+                      <td className="p-4 text-right font-bold text-gray-800">
+                        {formatCurrency(inv.total)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -247,46 +325,109 @@ export default function ResultsTable() {
                 <tr>
                   <th className="p-4 w-[32%]">🏦 Movimiento del Banco</th>
                   <th className="p-4 w-[16%] text-center">Estado de Cruce</th>
-                  <th className="p-4 w-[42%]">📁 Factura SAT Vinculada (Modificable)</th>
+                  <th className="p-4 w-[42%]">
+                    📁 Factura SAT Vinculada (Modificable)
+                  </th>
                   <th className="p-4 w-[10%] text-right">Diferencia</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {matches
                   .filter((m) => {
-                    if (activeTab === "MATCHED") return Math.abs(m.bankMovement.amount - (m.matchedInvoice?.total ?? 0)) < 0.01 && m.matchedInvoice;
+                    if (activeTab === "MATCHED") {
+                      return (
+                        m.status === "TOTAL_MATCH" ||
+                        (m.status as string) === "MANUAL_MATCH"
+                      );
+                    }
                     if (activeTab === "ISSUES") {
-                      if (!m.matchedInvoice) return true;
-                      return Math.abs(m.bankMovement.amount - m.matchedInvoice.total) >= 0.01;
+                      return (
+                        m.status === "NO_MATCH" ||
+                        m.status === "MULTIPLE_MATCHES"
+                      );
                     }
                     return true;
                   })
                   .map((match) => {
-                    const { bankMovement: bm, matchedInvoice: inv, observations } = match;
+                    const {
+                      bankMovement: bm,
+                      matchedInvoice: inv,
+                      observations,
+                      status,
+                    } = match;
                     const diff = inv ? bm.amount - inv.total : bm.amount;
-                    const isExact = Math.abs(diff) < 0.01;
-                    const dynamicOptions = unmatchedInvoices.filter((ui) => ui.type === bm.type);
+                    const dynamicOptions = unmatchedInvoices.filter(
+                      (ui) => ui.type === bm.type,
+                    );
 
                     return (
-                      <tr key={match.id} className="hover:bg-gray-50/40 transition-colors">
+                      <tr
+                        key={match.id}
+                        className="hover:bg-gray-50/40 transition-colors"
+                      >
                         {/* BANCO */}
                         <td className="p-4 space-y-1">
                           <div className="flex items-center space-x-2">
-                            <span className="font-mono text-gray-400">{bm.date}</span>
-                            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${bm.type === "INGRESO" ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50"}`}>
+                            <span className="font-mono text-gray-400">
+                              {bm.date}
+                            </span>
+                            <span
+                              className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${bm.type === "INGRESO" ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50"}`}
+                            >
                               {bm.type === "INGRESO" ? "DEPÓSITO" : "RETIRO"}
                             </span>
                           </div>
-                          <p className="font-medium text-gray-800 truncate max-w-60">{bm.description}</p>
-                          <p className="font-bold text-gray-900">{formatCurrency(bm.amount)}</p>
+                          <p className="font-medium text-gray-800 truncate max-w-60">
+                            {bm.description}
+                          </p>
+                          <p className="font-bold text-gray-900">
+                            {formatCurrency(bm.amount)}
+                          </p>
                         </td>
 
-                        {/* BADGE DINÁMICO */}
+                        {/* BADGE INTERACTIVO DE ESTADO */}
                         <td className="p-4 text-center align-middle">
-                          {inv && isExact && <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">🟢 Match Perfecto</span>}
-                          {inv && !isExact && <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">🟡 Desfase Dinero</span>}
-                          {!inv && <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">🔴 Sin Factura</span>}
-                          {observations && <p className="text-[9px] text-gray-400 mt-1 italic leading-tight">{observations}</p>}
+                          <div className="flex flex-col items-center justify-center space-y-1.5">
+                            {status === "TOTAL_MATCH" && (
+                              <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                🟢 Match Perfecto
+                              </span>
+                            )}
+
+                            {(status as string) === "MANUAL_MATCH" && (
+                              <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white shadow-xs">
+                                🟢 Desfase Aprobado
+                              </span>
+                            )}
+
+                            {status === "MULTIPLE_MATCHES" && (
+                              <>
+                                <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                                  🟡 Desfase menor
+                                </span>
+                                <button
+                                  onClick={() =>
+                                    handleApproveDiscrepancy(match.id)
+                                  }
+                                  className="text-[9px] bg-amber-500 hover:bg-amber-600 text-white font-extrabold px-2 py-0.5 rounded-md shadow-xs transition-colors cursor-pointer"
+                                >
+                                  ✓ Aprobar Cruce
+                                </button>
+                              </>
+                            )}
+
+                            {status === "NO_MATCH" && (
+                              <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
+                                🔴 Sin Factura
+                              </span>
+                            )}
+
+                            {observations && (
+                              <p className="text-[9px] text-gray-400 mt-0.5 italic leading-tight max-w-36 text-center">
+                                {observations}
+                              </p>
+                            )}
+                          </div>
                         </td>
 
                         {/* SELECTOR INTERACTIVO */}
@@ -294,28 +435,51 @@ export default function ResultsTable() {
                           <div className="space-y-2 bg-gray-50/60 p-2.5 rounded-xl border border-gray-100">
                             <select
                               value={inv ? inv.id : "none"}
-                              onChange={(e) => handleManualAssign(match.id, e.target.value)}
+                              onChange={(e) =>
+                                handleManualAssign(match.id, e.target.value)
+                              }
                               className="w-full bg-white border border-gray-200 rounded-lg p-1 text-xs font-medium text-gray-700 shadow-sm focus:outline-none"
                             >
                               {inv ? (
                                 <option value={inv.id}>
-                                  [Asignada] {inv.date} • {inv.type === "INGRESO" ? inv.nameReceptor : inv.nameEmisor} • {formatCurrency(inv.total)}
+                                  [Asignada] {inv.date} •{" "}
+                                  {inv.type === "INGRESO"
+                                    ? inv.nameReceptor
+                                    : inv.nameEmisor}{" "}
+                                  • {formatCurrency(inv.total)}
                                 </option>
                               ) : (
-                                <option value="none">⚠️ Vincular un CFDI manualmente...</option>
+                                <option value="none">
+                                  ⚠️ Vincular un CFDI manualmente...
+                                </option>
                               )}
-                              <option disabled value="">--- Facturas Libres Disponibles ---</option>
+                              <option disabled value="">
+                                --- Facturas Libres Disponibles ---
+                              </option>
                               {dynamicOptions.map((opt) => (
                                 <option key={opt.id} value={opt.id}>
-                                  {opt.date} • {opt.type === "INGRESO" ? opt.nameReceptor : opt.nameEmisor} • {formatCurrency(opt.total)} (...{opt.uuid.substring(32)})
+                                  {opt.date} •{" "}
+                                  {opt.type === "INGRESO"
+                                    ? opt.nameReceptor
+                                    : opt.nameEmisor}{" "}
+                                  • {formatCurrency(opt.total)} (...
+                                  {opt.uuid.substring(32)})
                                 </option>
                               ))}
-                              {inv && <option value="none">❌ Desvincular factura (Dejar vacío)</option>}
+                              {inv && (
+                                <option value="none">
+                                  ❌ Desvincular factura (Dejar vacío)
+                                </option>
+                              )}
                             </select>
                             {inv && (
                               <div className="text-[10px] text-gray-400 flex justify-between items-center px-1">
-                                <span className="font-mono">UUID: ...{inv.uuid.substring(24)}</span>
-                                <span className="font-semibold text-gray-600">Total: {formatCurrency(inv.total)}</span>
+                                <span className="font-mono">
+                                  UUID: ...{inv.uuid.substring(24)}
+                                </span>
+                                <span className="font-semibold text-gray-600">
+                                  Total: {formatCurrency(inv.total)}
+                                </span>
                               </div>
                             )}
                           </div>
@@ -323,7 +487,16 @@ export default function ResultsTable() {
 
                         {/* DIFERENCIA */}
                         <td className="p-4 text-right font-mono font-bold align-middle">
-                          <span className={isExact ? "text-emerald-600" : "text-amber-600 font-semibold"}>{formatCurrency(diff)}</span>
+                          <span
+                            className={
+                              status === "TOTAL_MATCH" ||
+                              (status as string) === "MANUAL_MATCH"
+                                ? "text-emerald-600"
+                                : "text-amber-600 font-semibold"
+                            }
+                          >
+                            {formatCurrency(diff)}
+                          </span>
                         </td>
                       </tr>
                     );
@@ -342,11 +515,14 @@ export default function ResultsTable() {
               📥 ¿Encontraste las facturas que faltaban?
             </h3>
             <p className="text-xs text-gray-400">
-              Arrastra nuevos archivos XML aquí. Se añadirán al vuelo sin alterar tus cruces ni recargar la página.
+              Arrastra nuevos archivos XML aquí. Se añadirán al vuelo sin
+              alterar tus cruces ni recargar la página.
             </p>
           </div>
           {isAddingInvoices && (
-            <span className="text-xs text-blue-600 font-medium animate-pulse">Procesando y de-duplicando...</span>
+            <span className="text-xs text-blue-600 font-medium animate-pulse">
+              Procesando y de-duplicando...
+            </span>
           )}
         </div>
 
@@ -368,7 +544,10 @@ export default function ResultsTable() {
             }`}
           >
             <span>{dropzoneFeedback.msg}</span>
-            <button onClick={() => setDropzoneFeedback(null)} className="text-[10px] underline font-bold opacity-80 hover:opacity-100">
+            <button
+              onClick={() => setDropzoneFeedback(null)}
+              className="text-[10px] underline font-bold opacity-80 hover:opacity-100"
+            >
               Cerrar
             </button>
           </div>
