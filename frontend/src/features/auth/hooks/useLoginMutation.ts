@@ -1,10 +1,13 @@
 import { useMutation } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../../api/supabase'; // Ajusta la ruta a tu cliente de Supabase
+import { useNavigate, useLocation } from 'react-router-dom';
+import { supabase } from '../../../api/supabase';
 import type { LoginCredentials } from '../types';
 
 export const useLoginMutation = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const from = (location.state as any)?.from?.pathname || '/home';
 
   return useMutation({
     mutationFn: async ({ email, password }: LoginCredentials) => {
@@ -20,8 +23,8 @@ export const useLoginMutation = () => {
       return data;
     },
     onSuccess: () => {
-      // Redirección inmediata al dashboard protegido
-      navigate('/home', { replace: true });
+      // Redirección inmediata
+      navigate(from, { replace: true });
     },
   });
 };

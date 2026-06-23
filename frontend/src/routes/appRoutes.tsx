@@ -9,6 +9,7 @@ import { SupportPage } from "../pages/SupportPage";
 
 import RegisterPage from "../features/auth/pages/RegisterPage";
 import { LoginPage } from "../features/auth/pages/LoginPage";
+import { ProtectedRoute } from "../features/auth/components/ProtectedRoute";
 
 export const router = createBrowserRouter([
   {
@@ -17,15 +18,27 @@ export const router = createBrowserRouter([
   },
   {
     path: "/register",
-    element: <RegisterPage />,
+    element: (
+      <ProtectedRoute requireAuth={false}>
+        <RegisterPage />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/login",
-    element: <LoginPage />,
+    element: (
+      <ProtectedRoute requireAuth={false}>
+        <LoginPage />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/home",
-    element: <Layout />,
+    element: (
+      <ProtectedRoute requireAuth={true}>
+        <Layout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,
@@ -48,7 +61,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'soporte',
+        path: "soporte",
         element: <SupportPage />,
       },
     ],
