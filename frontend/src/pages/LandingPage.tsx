@@ -22,7 +22,7 @@ export default function LandingPage() {
             </p>
             <div className="pt-4 flex flex-col sm:flex-row gap-4">
               <Link
-                to="/home"
+                to="/register"
                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-8 py-4 rounded-xl text-center shadow-lg shadow-indigo-200 transition-all transform hover:-translate-y-0.5 active:translate-y-0 text-base"
               >
                 Comenzar Conciliación Gratis 🚀
@@ -244,7 +244,7 @@ export default function LandingPage() {
           </p>
           <div className="pt-2">
             <Link
-              to="/home"
+              to="/register"
               className="inline-block bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-8 py-4 rounded-xl shadow-xl transition-all text-base transform hover:-translate-y-0.5"
             >
               Iniciar Ejecución Inmediata ➔

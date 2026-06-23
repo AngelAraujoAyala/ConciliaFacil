@@ -15,11 +15,11 @@ export class ConciliationsController {
    */
   @Post()
   async save(
-    @GetUser() user: { userId: string; email: string },
+    @GetUser() user: { id: string; email: string },
     @Body() saveConciliationDto: SaveConciliationDto,
   ) {
     // El userId viene seguro desde el token, el cliente no lo puede falsificar
-    return this.conciliationsService.save(user.userId, saveConciliationDto);
+    return this.conciliationsService.save(user.id, saveConciliationDto);
   }
 
   /**
@@ -35,8 +35,11 @@ export class ConciliationsController {
    * 🔍 GET /conciliations/:id
    * Recupera los JSONs pesados de una conciliación específica para rehidratar el frontend
    */
-  @Param('id')
-  async findOne(@Param('id') id: string, @GetUser() user: { userId: string }) {
+  @Get(':id') // 👈 1. Te faltaba definir el método HTTP y el parámetro en la ruta
+  async findOne(
+    @Param('id') id: string, // 👈 2. El @Param('id') que estaba arriba, va solo aquí adentro
+    @GetUser() user: { userId: string },
+  ) {
     return this.conciliationsService.findOne(id, user.userId);
   }
 }

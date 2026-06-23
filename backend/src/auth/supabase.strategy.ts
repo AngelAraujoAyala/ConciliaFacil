@@ -1,12 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
-// Definimos la estructura exacta que inyecta Supabase en el JWT
+// 1. Definimos una interfaz para el payload de Supabase
 interface SupabaseJwtPayload {
   sub: string;
   email: string;
-  [key: string]: unknown;
+  [key: string]: any; // Por si vienen más datos en el JWT que quieras ignorar
 }
 
 @Injectable()
@@ -14,8 +14,11 @@ export class SupabaseStrategy extends PassportStrategy(Strategy, 'supabase') {
   constructor() {
     const jwtSecret = process.env.SUPABASE_JWT_SECRET;
 
+    // 2. Validación defensiva para TypeScript (y para asegurar que no rompa en runtime)
     if (!jwtSecret) {
-      throw new Error('Falta la variable de entorno SUPABASE_JWT_SECRET');
+      throw new Error(
+        'SUPABASE_JWT_SECRET no está definida en las variables de entorno',
+      );
     }
 
     super({
@@ -25,10 +28,12 @@ export class SupabaseStrategy extends PassportStrategy(Strategy, 'supabase') {
     });
   }
 
-  validate(payload: SupabaseJwtPayload) {
-    return {
-      userId: payload.sub,
-      email: payload.email,
-    };
+  // 3. Quitamos el 'async' (ya no genera error) y tipamos correctamente el payload
+  validate(payload: SupabaseJwtPayload | null) {
+    if (!payload) {
+      throw new UnauthorizedException();
+    }
+
+    return { id: payload.sub, email: payload.email }; // Esto se inyectará en req.user
   }
 }

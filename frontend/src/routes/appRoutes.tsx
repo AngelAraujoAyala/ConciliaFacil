@@ -7,10 +7,16 @@ import ConciliationPage from "../features/conciliation/pages/ConciliationPage";
 import { HistoryPage } from "../features/history/pages/HistoryPage";
 import { SupportPage } from "../pages/SupportPage";
 
+import RegisterPage from "../features/auth/pages/RegisterPage";
+
 export const router = createBrowserRouter([
   {
     path: "/",
     element: <LandingPage />,
+  },
+  {
+    path: "/register",
+    element: <RegisterPage />,
   },
   {
     path: "/home",
