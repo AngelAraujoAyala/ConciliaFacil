@@ -1,5 +1,5 @@
-export type MatchStatus = 'MATCHED' | 'PARTIAL' | 'UNMATCHED';
-export type MovementType = 'INGRESO' | 'EGRESO';
+export type MatchStatus = "MATCHED" | "PARTIAL" | "UNMATCHED";
+export type MovementType = "INGRESO" | "EGRESO";
 
 export interface BankMovement {
   id: string;
@@ -22,11 +22,11 @@ export interface BankMovement {
 // }
 
 export interface InvoiceXML {
-  id: string;          // Identificador interno
-  uuid: string;        // Folio Fiscal del SAT (36 caracteres)
-  date: string;        // Formato YYYY-MM-DD
-  total: number;       // Monto total de la factura
-  type: 'INGRESO' | 'EGRESO';
+  id: string; // Identificador interno
+  uuid: string; // Folio Fiscal del SAT (36 caracteres)
+  date: string; // Formato YYYY-MM-DD
+  total: number; // Monto total de la factura
+  type: "INGRESO" | "EGRESO";
   rfcEmisor: string;
   nameEmisor: string;
   rfcReceptor: string;

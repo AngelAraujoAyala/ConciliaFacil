@@ -1,12 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '../../../api/supabase';
 import { useNavigate } from 'react-router-dom';
-
-// Definimos la interfaz para tipar estrictamente los datos de entrada
-interface RegisterCredentials {
-  email: string;
-  password: Record<string, any> | string; // Supabase acepta string para password convencional
-}
+import type { RegisterCredentials } from '../types';
 
 export const useRegisterMutation = () => {
   const navigate = useNavigate();
