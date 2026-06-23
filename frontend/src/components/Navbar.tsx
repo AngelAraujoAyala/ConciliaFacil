@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { User, Menu, LogOut, RefreshCw } from "lucide-react";
 import { useSidebar } from "./SidebarContext";
 import { useAuthStore } from "../store/authStore"; // Ajusta la ruta a tu store de Zustand
-import { supabase } from "../api/apiClient";
+import { supabase } from "../api/supabase";
 
 export default function Navbar() {
   const { toggleSidebar } = useSidebar();

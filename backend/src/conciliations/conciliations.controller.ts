@@ -1,8 +1,8 @@
 import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { ConciliationsService } from './conciliations.service';
 import { SaveConciliationDto } from './dto/save-conciliation.dto';
-import { SupabaseAuthGuard } from '../auth/supabase.guard';
-import { GetUser } from '../auth/get-user.decorator';
+import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
+import { GetUser } from '../auth/decorators/get-user.decorator';
 
 @Controller('conciliations')
 @UseGuards(SupabaseAuthGuard) // 🔒 Blindaje total: nadie entra sin su JWT de Supabase
