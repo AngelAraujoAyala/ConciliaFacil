@@ -17,14 +17,15 @@ type TabType = "ALL" | "MATCHED" | "ISSUES" | "UNMATCHED_INVOICES";
 
 export default function ResultsTable() {
   const user = useAuthStore((state) => state.user);
-  const matches = useConciliationStore((state) => state.matches);
-  const unmatchedInvoices = useConciliationStore(
-    (state) => state.remainingInvoices,
-  );
-  const reset = useConciliationStore((state) => state.reset);
-  const addIncrementalInvoices = useConciliationStore(
-    (state) => state.addIncrementalInvoices,
-  );
+
+  // 🎯 SOLUCIÓN: Unificamos todas las variables del store en una sola desestructuración limpia arriba
+  const {
+    matches,
+    remainingInvoices,
+    remainingBankMovements,
+    reset,
+    addIncrementalInvoices,
+  } = useConciliationStore();
 
   const [activeTab, setActiveTab] = useState<TabType>("ALL");
   const [isAddingInvoices, setIsAddingInvoices] = useState(false);
@@ -61,17 +62,17 @@ export default function ResultsTable() {
       totalBankMovements,
       totalInvoices:
         matches.filter((m) => m.matchedInvoice).length +
-        unmatchedInvoices.length,
+        remainingInvoices.length,
       fullyConciliated,
       unreconciledBank,
       reviewNeeded,
-      unreconciledInvoices: unmatchedInvoices.length,
+      unreconciledInvoices: remainingInvoices.length,
       successRate:
         totalBankMovements > 0
           ? Math.round((fullyConciliated / totalBankMovements) * 100)
           : 0,
     };
-  }, [matches, unmatchedInvoices]);
+  }, [matches, remainingInvoices]);
 
   // 🛠️ Control de flujo: Preparar modal y pre-llenar título sugerido
   const handleOpenSaveModal = (status: "DRAFT" | "COMPLETED") => {
@@ -94,17 +95,24 @@ export default function ResultsTable() {
     )
       return;
 
+    // 1. Los cruces reales son los que SÍ lograron emparejar una factura (Evitamos estados 'NO_MATCH')
+    const realMatches = matches.filter((m) => m.status !== "NO_MATCH");
+
     const payload: CreateConciliationDto & { status: "DRAFT" | "COMPLETED" } = {
       title: conciliationTitle.trim(),
       status: selectedStatus,
       userId: user.id,
       successRate: summary.successRate,
-      totalInvoices: matches.length + summary.unreconciledInvoices,
-      totalBankMovements: matches.length + summary.unreconciledBank,
-      matchedCount: matches.filter((m) => !!m.matchedInvoice).length,
+
+      // 2. MATEMÁTICA PURA CON FUENTES DE VERDAD UNIFICADAS:
+      totalInvoices: realMatches.length + remainingInvoices.length,
+      totalBankMovements: realMatches.length + remainingBankMovements.length,
+      matchedCount: realMatches.length,
+
+      // 3. ENVÍO DE SNAPSHOTS NATIVOS A POSTGRESQL (JSONB)
       matches: matches,
-      remainingInvoices: unmatchedInvoices,
-      remainingBankMovements: [],
+      remainingInvoices: remainingInvoices,
+      remainingBankMovements: remainingBankMovements,
     };
 
     mutate(payload);
@@ -134,7 +142,7 @@ export default function ResultsTable() {
 
     const previousInvoice = currentMatch.matchedInvoice;
     let newInvoice: InvoiceXML | null = null;
-    let updatedUnmatched = [...unmatchedInvoices];
+    let updatedUnmatched = [...remainingInvoices];
 
     if (previousInvoice) updatedUnmatched.push(previousInvoice);
 
@@ -237,7 +245,7 @@ export default function ResultsTable() {
             onClick={() => setActiveTab("UNMATCHED_INVOICES")}
             className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all ${activeTab === "UNMATCHED_INVOICES" ? "border-b-2 border-purple-500 text-purple-600 font-bold bg-purple-50/20" : "text-gray-500"}`}
           >
-            Facturas Huérfanas ({unmatchedInvoices.length})
+            Facturas Huérfanas ({UnmatchedInvoicesTable.length})
           </button>
         </div>
 
@@ -279,11 +287,11 @@ export default function ResultsTable() {
       {/* 📋 CONTENEDOR DE TABLAS PRINCIPALES */}
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         {activeTab === "UNMATCHED_INVOICES" ? (
-          <UnmatchedInvoicesTable unmatchedInvoices={unmatchedInvoices} />
+          <UnmatchedInvoicesTable unmatchedInvoices={remainingInvoices} />
         ) : (
           <MatchesTable
             matches={matches}
-            unmatchedInvoices={unmatchedInvoices}
+            unmatchedInvoices={remainingInvoices}
             activeTab={activeTab}
             onApproveDiscrepancy={handleApproveDiscrepancy}
             onManualAssign={handleManualAssign}

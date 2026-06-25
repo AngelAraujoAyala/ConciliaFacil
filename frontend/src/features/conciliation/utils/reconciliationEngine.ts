@@ -21,13 +21,14 @@ export const executeReconciliation = (
   movements: BankMovement[],
   invoices: InvoiceXML[],
   daysTolerance: number = 4,
-  amountTolerance: number = 5.0, // Permite hasta $5.00 pesos de diferencia por defecto
+  amountTolerance: number = 5.0,
 ) => {
   const matches: ConciliationMatch[] = [];
   let remainingInvoices = [...invoices];
+  // 1. Inicializamos el contenedor de movimientos huérfanos
+  const remainingBankMovements: BankMovement[] = [];
 
   movements.forEach((movement) => {
-    // 1. Buscamos facturas del mismo tipo que entren en la tolerancia de monto
     const potentialMatches = remainingInvoices.filter((invoice) => {
       const amountDiff = Math.abs(invoice.total - movement.amount);
       const sameType = invoice.type === movement.type;
@@ -35,6 +36,7 @@ export const executeReconciliation = (
     });
 
     if (potentialMatches.length === 0) {
+      // Mantenemos esto si tu tabla de resultados necesita renderizar la fila vacía
       matches.push({
         id: `match-bank-${movement.id}`,
         bankMovement: movement,
@@ -42,10 +44,12 @@ export const executeReconciliation = (
         status: "NO_MATCH",
         observations: "No se encontraron facturas cercanas en monto.",
       });
+
+      // 2. 🎯 GUARDAMOS EL MOVIMIENTO HUÉRFANO REAL
+      remainingBankMovements.push(movement);
       return;
     }
 
-    // 2. Filtrar por ventana de tiempo
     const matchesWithinTimeWindow = potentialMatches.filter((invoice) => {
       return getDaysDifference(movement.date, invoice.date) <= daysTolerance;
     });
@@ -58,7 +62,6 @@ export const executeReconciliation = (
         id: `match-auto-${movement.id}-${luckyInvoice.id}`,
         bankMovement: movement,
         matchedInvoice: luckyInvoice,
-        // Si varió en centavos/pesos, lo mandamos a revisión (amarillo)
         status: exactAmount ? "TOTAL_MATCH" : "MULTIPLE_MATCHES",
         observations: exactAmount
           ? undefined
@@ -69,8 +72,7 @@ export const executeReconciliation = (
         (inv) => inv.id !== luckyInvoice.id,
       );
     } else if (matchesWithinTimeWindow.length > 1) {
-      // Si hay ambigüedad de varias facturas candidatas, sugerimos la de menor diferencia de dinero/fecha
-      const bestInvoice = matchesWithinTimeWindow[0]; // Simplificado para el MVP
+      const bestInvoice = matchesWithinTimeWindow[0];
 
       matches.push({
         id: `match-ambiguous-${movement.id}-${bestInvoice.id}`,
@@ -84,7 +86,6 @@ export const executeReconciliation = (
         (inv) => inv.id !== bestInvoice.id,
       );
     } else {
-      // Hay facturas con montos similares pero muy lejos en fecha
       matches.push({
         id: `match-timeout-${movement.id}`,
         bankMovement: movement,
@@ -92,8 +93,12 @@ export const executeReconciliation = (
         status: "NO_MATCH",
         observations: "Facturas similares exceden límite de días.",
       });
+
+      // 3. 🎯 TAMBIÉN ES HUÉRFANO POR VENTANA DE TIEMPO
+      remainingBankMovements.push(movement);
     }
   });
 
-  return { matches, remainingInvoices };
+  // 4. Regresamos las 3 colecciones perfectamente calculadas
+  return { matches, remainingInvoices, remainingBankMovements };
 };

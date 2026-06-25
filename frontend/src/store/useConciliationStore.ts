@@ -8,7 +8,6 @@ import { get, set, del } from "idb-keyval";
 import { executeReconciliation } from "../features/conciliation/utils/reconciliationEngine";
 import type { BankMovement, InvoiceXML, ConciliationMatch } from "../types";
 
-// 1. Adaptador Senior de IndexedDB para Zustand
 const indexedDBStorage: StateStorage = {
   getItem: async (name: string): Promise<string | null> => {
     return (await get(name)) || null;
@@ -30,6 +29,7 @@ interface ConciliationState {
   invoices: InvoiceXML[];
   matches: ConciliationMatch[];
   remainingInvoices: InvoiceXML[];
+  remainingBankMovements: BankMovement[];
 
   // Acciones de Flujo Basico
   setCurrentStep: (step: ConciliationStep) => void;
@@ -51,7 +51,8 @@ export const useConciliationStore = create<ConciliationState>()(
       invoices: [],
       matches: [],
       remainingInvoices: [],
-
+      remainingBankMovements: [],
+      
       // --- ACCIONES DE FLUJO ---
       setCurrentStep: (step) => set({ currentStep: step }),
 
@@ -69,6 +70,9 @@ export const useConciliationStore = create<ConciliationState>()(
         set({
           matches: results.matches,
           remainingInvoices: results.remainingInvoices,
+          // 2. Capturamos los movimientos huerfanos que tu motor ya calcula
+          // (Asumiendo que tu motor devuelve 'remainingBankMovements' o similar, adáptalo si se llama distinto)
+          remainingBankMovements: results.remainingBankMovements || [], 
           currentStep: "RESULTS",
         });
       },
@@ -115,6 +119,7 @@ export const useConciliationStore = create<ConciliationState>()(
           invoices: [],
           matches: [],
           remainingInvoices: [],
+          remainingBankMovements: [],
         });
       },
     }),

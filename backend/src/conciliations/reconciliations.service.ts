@@ -1,5 +1,8 @@
-// src/conciliations/reconciliations.service.ts
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateConciliationDto } from './dto/create-conciliation.dto';
 
@@ -35,6 +38,64 @@ export class ReconciliationsService {
       console.error('Error al guardar conciliación JSONB:', error);
       throw new InternalServerErrorException(
         'No se pudo guardar la sesión de conciliación en la base de datos.',
+      );
+    }
+  }
+
+  /**
+   * Obtiene el listado optimizado (Lightweight) de conciliaciones por usuario.
+   * Excluye los payloads JSONB masivos.
+   */
+  async findAllByUser(userId: string) {
+    try {
+      return await this.prisma.conciliation.findMany({
+        where: { userId },
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          totalInvoices: true,
+          totalBankMovements: true,
+          matchedCount: true,
+          successRate: true,
+          createdAt: true,
+          updatedAt: true,
+          // matches, remainingInvoices y remainingBankMovements quedan omitidos explícitamente
+        },
+        orderBy: {
+          createdAt: 'desc', // Las más recientes primero
+        },
+      });
+    } catch (error) {
+      console.error('Error al obtener histórico:', error);
+      throw new InternalServerErrorException(
+        'Error al recuperar el historial de conciliaciones.',
+      );
+    }
+  }
+
+  /**
+   * Obtiene la sesión de conciliación completa incluyendo los snapshots JSONB
+   */
+  async findOne(id: string, userId: string) {
+    try {
+      const conciliation = await this.prisma.conciliation.findFirst({
+        where: { id, userId },
+      });
+
+      if (!conciliation) {
+        throw new NotFoundException(
+          `No se encontró la conciliación con ID: ${id} para este usuario.`,
+        );
+      }
+
+      return conciliation;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+
+      console.error('Error al obtener detalle de conciliación:', error);
+      throw new InternalServerErrorException(
+        'Error al recuperar el detalle de la conciliación.',
       );
     }
   }

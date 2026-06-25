@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ReconciliationsService } from './reconciliations.service';
 import { ReconciliationsController } from './reconciliations.controller';
-import { PrismaModule } from '../prisma/prisma.module'; // Ajusta según tu estructura
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
   imports: [PrismaModule],

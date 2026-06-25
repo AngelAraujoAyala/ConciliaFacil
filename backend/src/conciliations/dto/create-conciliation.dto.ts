@@ -1,4 +1,3 @@
-// src/conciliations/dto/create-conciliation.dto.ts
 import {
   IsArray,
   IsNotEmpty,
