@@ -14,32 +14,42 @@ enum ConciliationStatus {
 }
 
 model User {
-  id                    String        @id @default(uuid())
-  email                 String        @unique
-  isSubscribed          Boolean       @default(false)
-  freeConciliationsLeft Int           @default(1)
+  id                    String         @id @default(uuid())
+  email                 String         @unique
+  isSubscribed          Boolean        @default(false)
+  freeConciliationsLeft Int            @default(1)
   conciliations         Conciliation[]
   
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
 
   @@map("users")
 }
 
 model Conciliation {
-  id               String             @id @default(uuid())
-  title            String
-  status           ConciliationStatus @default(DRAFT)
-  matches          Json               // Guarda array de ConciliationMatch[]
-  remainingInvoices Json              // Guarda array de InvoiceXML[]
-  successRate      Int                // Almacena KPI final
-
-  // RELACIÓN CON EL DUEÑO DE LA INFORMACIÓN
-  userId           String
-  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                    String             @id @default(uuid())
+  title                 String
+  status                ConciliationStatus @default(DRAFT)
   
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  // --- MÉTRICAS RÁPIDAS (Para listados, KPIs y analíticas ligeras) ---
+  totalInvoices         Int                @default(0)
+  totalBankMovements    Int                @default(0)
+  matchedCount          Int                @default(0)
+  successRate           Int                // Almacena KPI final (ej. 85 para 85%)
 
+  // --- DATA CLAVE (Estructuras complejas JSONB) ---
+  matches               Json               // Guarda array de ConciliationMatch[]
+  remainingInvoices     Json               // Guarda array de InvoiceXML[] (Facturas sin movimiento)
+  remainingBankMovements Json               // Guarda array de BankMovement[] (Movimientos sin factura)
+
+  // --- RELACIÓN CON EL DUEÑO DE LA INFORMACIÓN ---
+  userId                String
+  user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  // Índices para optimizar queries en producción
+  @@index([userId])
   @@map("conciliations")
 }

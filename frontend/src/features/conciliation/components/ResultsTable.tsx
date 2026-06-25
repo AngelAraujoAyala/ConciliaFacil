@@ -1,13 +1,22 @@
+// src/features/conciliation/components/ResultsTable.tsx
 import { useState, useMemo } from "react";
 import { useConciliationStore } from "../../../store/useConciliationStore";
 import FileDropzone from "./FileDropzone";
 import { extractInvoicesXml } from "../utils/extractInvoicesXml";
 import type { InvoiceXML } from "../../../types";
+import { useCreateConciliation } from "../hooks/useCreateConciliation";
+import { useAuthStore } from "../../../store/authStore";
+import type { CreateConciliationDto } from "../types/conciliation-payload";
+
+// Componentes extraídos atomizados
+import SummaryCards from "./SummaryCards";
+import UnmatchedInvoicesTable from "./UnmatchedInvoicesTable";
+import MatchesTable from "./MatchesTable";
 
 type TabType = "ALL" | "MATCHED" | "ISSUES" | "UNMATCHED_INVOICES";
 
 export default function ResultsTable() {
-  // 🧠 CONEXIÓN AL STORE GLOBAL
+  const user = useAuthStore((state) => state.user);
   const matches = useConciliationStore((state) => state.matches);
   const unmatchedInvoices = useConciliationStore(
     (state) => state.remainingInvoices,
@@ -24,16 +33,23 @@ export default function ResultsTable() {
     type: "success" | "error";
   } | null>(null);
 
-  // 🧮 RECALCULAR ESTADÍSTICAS BASADAS EN EL ESTADO REAL (STATUS)
+  // 📝 Estados locales para el modal de persistencia y títulos personalizados
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [conciliationTitle, setConciliationTitle] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState<
+    "DRAFT" | "COMPLETED" | null
+  >(null);
+
+  // Inyectamos la mutación de TanStack Query
+  const { mutate, isPending: isSaving } = useCreateConciliation();
+
+  // 🧮 KPIs reactivos heredados
   const summary = useMemo(() => {
     const totalBankMovements = matches.length;
-
-    // Ahora consideramos válidos tanto el Match Perfecto como el Aprobado Manualmente
     const fullyConciliated = matches.filter(
       (m) =>
         m.status === "TOTAL_MATCH" || (m.status as string) === "MANUAL_MATCH",
     ).length;
-
     const unreconciledBank = matches.filter(
       (m) => m.status === "NO_MATCH",
     ).length;
@@ -57,25 +73,61 @@ export default function ResultsTable() {
     };
   }, [matches, unmatchedInvoices]);
 
-  // ⚡ MANEJADOR PARA FORZAR/APROBAR DESFASE MANUALMENTE
+  // 🛠️ Control de flujo: Preparar modal y pre-llenar título sugerido
+  const handleOpenSaveModal = (status: "DRAFT" | "COMPLETED") => {
+    if (matches.length === 0) return;
+
+    const defaultTitle = `Conciliación - ${new Date().toLocaleDateString("es-MX", { month: "long", year: "numeric" })}`;
+
+    setConciliationTitle(defaultTitle);
+    setSelectedStatus(status);
+    setIsModalOpen(true);
+  };
+
+  // 💾 Confirmación final desde el modal hacia el Backend
+  const handleConfirmSave = () => {
+    if (
+      matches.length === 0 ||
+      !user ||
+      !selectedStatus ||
+      !conciliationTitle.trim()
+    )
+      return;
+
+    const payload: CreateConciliationDto & { status: "DRAFT" | "COMPLETED" } = {
+      title: conciliationTitle.trim(),
+      status: selectedStatus,
+      userId: user.id,
+      successRate: summary.successRate,
+      totalInvoices: matches.length + summary.unreconciledInvoices,
+      totalBankMovements: matches.length + summary.unreconciledBank,
+      matchedCount: matches.filter((m) => !!m.matchedInvoice).length,
+      matches: matches,
+      remainingInvoices: unmatchedInvoices,
+      remainingBankMovements: [],
+    };
+
+    mutate(payload);
+    setIsModalOpen(false);
+  };
+
+  // ⚡ EVENTO: APROBACIÓN MANUAL
   const handleApproveDiscrepancy = (matchId: string) => {
     const updatedMatches = matches.map((m) => {
       if (m.id !== matchId) return m;
       const diff = m.matchedInvoice
         ? m.bankMovement.amount - m.matchedInvoice.total
         : 0;
-
       return {
         ...m,
         status: "MANUAL_MATCH" as any,
-        observations: `Desfase de ${formatCurrency(diff)} aprobado manualmente por el usuario.`,
+        observations: `Desfase de ${new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(diff)} aprobado manualmente.`,
       };
     });
-
     useConciliationStore.setState({ matches: updatedMatches });
   };
 
-  // 🔄 MANEJADOR DE ASIGNACIÓN MANUAL DESDE SELECTOR
+  // 🔄 EVENTO: REASIGNACIÓN MANUAL DESDE SELECTOR
   const handleManualAssign = (matchId: string, selectedInvoiceId: string) => {
     const currentMatch = matches.find((m) => m.id === matchId);
     if (!currentMatch) return;
@@ -84,9 +136,7 @@ export default function ResultsTable() {
     let newInvoice: InvoiceXML | null = null;
     let updatedUnmatched = [...unmatchedInvoices];
 
-    if (previousInvoice) {
-      updatedUnmatched.push(previousInvoice);
-    }
+    if (previousInvoice) updatedUnmatched.push(previousInvoice);
 
     if (selectedInvoiceId !== "none") {
       const found = updatedUnmatched.find(
@@ -102,7 +152,6 @@ export default function ResultsTable() {
 
     const updatedMatches = matches.map((m) => {
       if (m.id !== matchId) return m;
-
       let newStatus: "TOTAL_MATCH" | "NO_MATCH" | "MULTIPLE_MATCHES" =
         "NO_MATCH";
       let obs = "Asignado manualmente por el usuario.";
@@ -110,7 +159,6 @@ export default function ResultsTable() {
       if (newInvoice) {
         const exactAmount =
           Math.abs(m.bankMovement.amount - newInvoice.total) < 0.01;
-        // Si el usuario cambia la factura, vuelve a calcular de forma limpia el estado inicial
         newStatus = exactAmount ? "TOTAL_MATCH" : "MULTIPLE_MATCHES";
         if (!exactAmount) obs = `Match manual con diferencia de pesos.`;
       } else {
@@ -131,34 +179,27 @@ export default function ResultsTable() {
     });
   };
 
-  // 📥 MANEJADOR DROPZONE INCREMENTAL
+  // 📥 EVENTO: DROPZONE INCREMENTAL
   const handleIncrementalInvoicesSelected = async (files: File[]) => {
     if (files.length === 0) return;
     try {
       setIsAddingInvoices(true);
       setDropzoneFeedback(null);
-
       const parsedInvoices = await extractInvoicesXml(files);
-      if (parsedInvoices.length === 0) {
-        throw new Error("No se encontraron XMLs válidos en la selección.");
-      }
+      if (parsedInvoices.length === 0)
+        throw new Error("No se encontraron XMLs válidos.");
 
       const { addedCount } = addIncrementalInvoices(parsedInvoices);
-
-      if (addedCount > 0) {
-        setDropzoneFeedback({
-          msg: `¡Éxito! Se inyectaron ${addedCount} facturas nuevas al pool de forma incremental.`,
-          type: "success",
-        });
-      } else {
-        setDropzoneFeedback({
-          msg: "Todas las facturas arrastradas ya existían en el sistema (Duplicados omitidos).",
-          type: "error",
-        });
-      }
+      setDropzoneFeedback({
+        msg:
+          addedCount > 0
+            ? `Se inyectaron ${addedCount} facturas nuevas.`
+            : "Todas las facturas ya existían.",
+        type: addedCount > 0 ? "success" : "error",
+      });
     } catch (err) {
       setDropzoneFeedback({
-        msg: err instanceof Error ? err.message : "Error al procesar los XMLs.",
+        msg: err instanceof Error ? err.message : "Error al procesar XMLs.",
         type: "error",
       });
     } finally {
@@ -166,348 +207,91 @@ export default function ResultsTable() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-MX", {
-      style: "currency",
-      currency: "MXN",
-    }).format(amount);
-  };
-
   return (
     <div className="space-y-6">
       {/* 📊 PANEL DE KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-          <span className="text-xs font-medium text-gray-400 block">
-            Efectividad Global
-          </span>
-          <div className="flex items-baseline space-x-2 mt-1">
-            <span className="text-2xl font-bold text-gray-800">
-              {summary.successRate}%
-            </span>
-          </div>
-          <div className="w-full bg-gray-100 h-1.5 rounded-full mt-2 overflow-hidden">
-            <div
-              className="bg-emerald-500 h-1.5 rounded-full transition-all"
-              style={{ width: `${summary.successRate}%` }}
-            />
-          </div>
-        </div>
+      <SummaryCards summary={summary} />
 
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-          <span className="text-xs font-medium text-gray-400 block">
-            Sin Factura (Banco)
-          </span>
-          <span className="text-2xl font-bold text-red-500 mt-1 block">
-            {summary.unreconciledBank}
-          </span>
-          <p className="text-[10px] text-gray-400 mt-1">
-            Requieren asignación manual
-          </p>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-          <span className="text-xs font-medium text-gray-400 block">
-            Desfases Pendientes
-          </span>
-          <span className="text-2xl font-bold text-amber-500 mt-1 block">
-            {summary.reviewNeeded}
-          </span>
-          <p className="text-[10px] text-gray-400 mt-1">
-            Diferencias por revisar/aprobar
-          </p>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm bg-linear-to-br from-blue-50/40 to-emerald-50/20">
-          <span className="text-xs font-medium text-emerald-700 block">
-            Facturas Disponibles (SAT)
-          </span>
-          <span className="text-2xl font-bold text-emerald-600 mt-1 block">
-            {summary.unreconciledInvoices}
-          </span>
-          <p className="text-[10px] text-emerald-600/80 mt-1">
-            Disponibles en el selector
-          </p>
-        </div>
-      </div>
-
-      {/* 🎛️ PESTAÑAS DE FILTRADO */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-gray-200 pb-1">
-        <div className="flex space-x-1 overflow-x-auto w-full sm:w-auto">
+      {/* 🎛️ PESTAÑAS Y ACCIONES DE CABECERA */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-gray-200 pb-2">
+        <div className="flex space-x-1 overflow-x-auto w-full lg:w-auto">
           <button
             onClick={() => setActiveTab("ALL")}
-            className={`px-4 py-2 text-xs font-medium rounded-t-xl ${activeTab === "ALL" ? "border-b-2 border-blue-600 text-blue-600 font-bold bg-blue-50/20" : "text-gray-500"}`}
+            className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all ${activeTab === "ALL" ? "border-b-2 border-blue-600 text-blue-600 font-bold bg-blue-50/20" : "text-gray-500"}`}
           >
             Todos ({matches.length})
           </button>
           <button
             onClick={() => setActiveTab("MATCHED")}
-            className={`px-4 py-2 text-xs font-medium rounded-t-xl ${activeTab === "MATCHED" ? "border-b-2 border-emerald-600 text-emerald-600 font-bold bg-emerald-50/20" : "text-gray-500"}`}
+            className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all ${activeTab === "MATCHED" ? "border-b-2 border-emerald-600 text-emerald-600 font-bold bg-emerald-50/20" : "text-gray-500"}`}
           >
             Cuadrado Perfecto ({summary.fullyConciliated})
           </button>
           <button
             onClick={() => setActiveTab("ISSUES")}
-            className={`px-4 py-2 text-xs font-medium rounded-t-xl ${activeTab === "ISSUES" ? "border-b-2 border-amber-500 text-amber-600 font-bold bg-amber-50/20" : "text-gray-500"}`}
+            className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all ${activeTab === "ISSUES" ? "border-b-2 border-amber-500 text-amber-600 font-bold bg-amber-50/20" : "text-gray-500"}`}
           >
-            Alertas / Pendientes (
-            {summary.unreconciledBank + summary.reviewNeeded})
+            Alertas ({summary.unreconciledBank + summary.reviewNeeded})
           </button>
           <button
             onClick={() => setActiveTab("UNMATCHED_INVOICES")}
-            className={`px-4 py-2 text-xs font-medium rounded-t-xl ${activeTab === "UNMATCHED_INVOICES" ? "border-b-2 border-purple-500 text-purple-600 font-bold bg-purple-50/20" : "text-gray-500"}`}
+            className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all ${activeTab === "UNMATCHED_INVOICES" ? "border-b-2 border-purple-500 text-purple-600 font-bold bg-purple-50/20" : "text-gray-500"}`}
           >
             Facturas Huérfanas ({unmatchedInvoices.length})
           </button>
         </div>
-        <button
-          onClick={reset}
-          className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-3 py-1.5 rounded-lg transition-colors"
-        >
-          🔄 Nueva Conciliación
-        </button>
+
+        {/* 🎛️ BOTONERA PROFESIONAL */}
+        <div className="flex flex-wrap items-center gap-2 self-end lg:self-auto w-full sm:w-auto justify-end">
+          <button
+            onClick={() => {
+              if (
+                confirm(
+                  "¿Seguro que deseas limpiar la sesión actual? Se borrarán todos los cruces actuales.",
+                )
+              ) {
+                reset();
+              }
+            }}
+            className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-3 py-2 rounded-xl transition-colors cursor-pointer"
+          >
+            🔄 Reiniciar conciliación
+          </button>
+
+          <button
+            onClick={() => handleOpenSaveModal("DRAFT")}
+            disabled={isSaving || matches.length === 0}
+            className="text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold px-3 py-2 rounded-xl border border-amber-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+          >
+            📁 Guardar progreso
+          </button>
+
+          <button
+            onClick={() => handleOpenSaveModal("COMPLETED")}
+            disabled={isSaving || matches.length === 0}
+            className="text-xs bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-xl shadow-xs disabled:bg-gray-300 disabled:cursor-not-allowed transition-all flex items-center gap-1 cursor-pointer"
+          >
+            {isSaving ? "⏳ Guardando..." : "✅ Marcar como completada"}
+          </button>
+        </div>
       </div>
 
-      {/* 📋 CONTENEDOR PRINCIPAL */}
+      {/* 📋 CONTENEDOR DE TABLAS PRINCIPALES */}
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         {activeTab === "UNMATCHED_INVOICES" ? (
-          /* ================= VISTA: FACTURAS HUÉRFANAS ================= */
-          <div className="overflow-x-auto">
-            {unmatchedInvoices.length === 0 ? (
-              <div className="p-8 text-center text-sm text-gray-400">
-                No hay facturas huérfanas libres.
-              </div>
-            ) : (
-              <table className="w-full text-left border-collapse text-xs">
-                <thead className="bg-gray-50 text-[11px] text-gray-400 font-bold uppercase">
-                  <tr>
-                    <th className="p-4">Fecha Factura</th>
-                    <th className="p-4">UUID Breve</th>
-                    <th className="p-4">Contribuyente</th>
-                    <th className="p-4 text-right">Total Factura</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {unmatchedInvoices.map((inv) => (
-                    <tr key={inv.id} className="hover:bg-purple-50/10">
-                      <td className="p-4 font-mono text-gray-500">
-                        {inv.date}
-                      </td>
-                      <td className="p-4">
-                        <span className="font-mono text-gray-400 block">
-                          ...{inv.uuid.substring(24)}
-                        </span>
-                        <span
-                          className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${inv.type === "INGRESO" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}
-                        >
-                          {inv.type}
-                        </span>
-                      </td>
-                      <td className="p-4 font-medium text-gray-700">
-                        {inv.type === "INGRESO"
-                          ? inv.nameReceptor
-                          : inv.nameEmisor}
-                      </td>
-                      <td className="p-4 text-right font-bold text-gray-800">
-                        {formatCurrency(inv.total)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+          <UnmatchedInvoicesTable unmatchedInvoices={unmatchedInvoices} />
         ) : (
-          /* ================= VISTA: TABLA EN ESPEJO ================= */
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs min-w-225">
-              <thead className="bg-gray-50 text-[11px] text-gray-400 font-bold uppercase">
-                <tr>
-                  <th className="p-4 w-[32%]">🏦 Movimiento del Banco</th>
-                  <th className="p-4 w-[16%] text-center">Estado de Cruce</th>
-                  <th className="p-4 w-[42%]">
-                    📁 Factura SAT Vinculada (Modificable)
-                  </th>
-                  <th className="p-4 w-[10%] text-right">Diferencia</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {matches
-                  .filter((m) => {
-                    if (activeTab === "MATCHED") {
-                      return (
-                        m.status === "TOTAL_MATCH" ||
-                        (m.status as string) === "MANUAL_MATCH"
-                      );
-                    }
-                    if (activeTab === "ISSUES") {
-                      return (
-                        m.status === "NO_MATCH" ||
-                        m.status === "MULTIPLE_MATCHES"
-                      );
-                    }
-                    return true;
-                  })
-                  .map((match) => {
-                    const {
-                      bankMovement: bm,
-                      matchedInvoice: inv,
-                      observations,
-                      status,
-                    } = match;
-                    const diff = inv ? bm.amount - inv.total : bm.amount;
-                    const dynamicOptions = unmatchedInvoices.filter(
-                      (ui) => ui.type === bm.type,
-                    );
-
-                    return (
-                      <tr
-                        key={match.id}
-                        className="hover:bg-gray-50/40 transition-colors"
-                      >
-                        {/* BANCO */}
-                        <td className="p-4 space-y-1">
-                          <div className="flex items-center space-x-2">
-                            <span className="font-mono text-gray-400">
-                              {bm.date}
-                            </span>
-                            <span
-                              className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${bm.type === "INGRESO" ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50"}`}
-                            >
-                              {bm.type === "INGRESO" ? "DEPÓSITO" : "RETIRO"}
-                            </span>
-                          </div>
-                          <p className="font-medium text-gray-800 truncate max-w-60">
-                            {bm.description}
-                          </p>
-                          <p className="font-bold text-gray-900">
-                            {formatCurrency(bm.amount)}
-                          </p>
-                        </td>
-
-                        {/* BADGE INTERACTIVO DE ESTADO */}
-                        <td className="p-4 text-center align-middle">
-                          <div className="flex flex-col items-center justify-center space-y-1.5">
-                            {status === "TOTAL_MATCH" && (
-                              <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                                🟢 Match Perfecto
-                              </span>
-                            )}
-
-                            {(status as string) === "MANUAL_MATCH" && (
-                              <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white shadow-xs">
-                                🟢 Desfase Aprobado
-                              </span>
-                            )}
-
-                            {status === "MULTIPLE_MATCHES" && (
-                              <>
-                                <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                                  🟡 Desfase menor
-                                </span>
-                                <button
-                                  onClick={() =>
-                                    handleApproveDiscrepancy(match.id)
-                                  }
-                                  className="text-[9px] bg-amber-500 hover:bg-amber-600 text-white font-extrabold px-2 py-0.5 rounded-md shadow-xs transition-colors cursor-pointer"
-                                >
-                                  ✓ Aprobar Cruce
-                                </button>
-                              </>
-                            )}
-
-                            {status === "NO_MATCH" && (
-                              <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
-                                🔴 Sin Factura
-                              </span>
-                            )}
-
-                            {observations && (
-                              <p className="text-[9px] text-gray-400 mt-0.5 italic leading-tight max-w-36 text-center">
-                                {observations}
-                              </p>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* SELECTOR INTERACTIVO */}
-                        <td className="p-4 align-middle">
-                          <div className="space-y-2 bg-gray-50/60 p-2.5 rounded-xl border border-gray-100">
-                            <select
-                              value={inv ? inv.id : "none"}
-                              onChange={(e) =>
-                                handleManualAssign(match.id, e.target.value)
-                              }
-                              className="w-full bg-white border border-gray-200 rounded-lg p-1 text-xs font-medium text-gray-700 shadow-sm focus:outline-none"
-                            >
-                              {inv ? (
-                                <option value={inv.id}>
-                                  [Asignada] {inv.date} •{" "}
-                                  {inv.type === "INGRESO"
-                                    ? inv.nameReceptor
-                                    : inv.nameEmisor}{" "}
-                                  • {formatCurrency(inv.total)}
-                                </option>
-                              ) : (
-                                <option value="none">
-                                  ⚠️ Vincular un CFDI manualmente...
-                                </option>
-                              )}
-                              <option disabled value="">
-                                --- Facturas Libres Disponibles ---
-                              </option>
-                              {dynamicOptions.map((opt) => (
-                                <option key={opt.id} value={opt.id}>
-                                  {opt.date} •{" "}
-                                  {opt.type === "INGRESO"
-                                    ? opt.nameReceptor
-                                    : opt.nameEmisor}{" "}
-                                  • {formatCurrency(opt.total)} (...
-                                  {opt.uuid.substring(32)})
-                                </option>
-                              ))}
-                              {inv && (
-                                <option value="none">
-                                  ❌ Desvincular factura (Dejar vacío)
-                                </option>
-                              )}
-                            </select>
-                            {inv && (
-                              <div className="text-[10px] text-gray-400 flex justify-between items-center px-1">
-                                <span className="font-mono">
-                                  UUID: ...{inv.uuid.substring(24)}
-                                </span>
-                                <span className="font-semibold text-gray-600">
-                                  Total: {formatCurrency(inv.total)}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* DIFERENCIA */}
-                        <td className="p-4 text-right font-mono font-bold align-middle">
-                          <span
-                            className={
-                              status === "TOTAL_MATCH" ||
-                              (status as string) === "MANUAL_MATCH"
-                                ? "text-emerald-600"
-                                : "text-amber-600 font-semibold"
-                            }
-                          >
-                            {formatCurrency(diff)}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          </div>
+          <MatchesTable
+            matches={matches}
+            unmatchedInvoices={unmatchedInvoices}
+            activeTab={activeTab}
+            onApproveDiscrepancy={handleApproveDiscrepancy}
+            onManualAssign={handleManualAssign}
+          />
         )}
       </div>
 
-      {/* 📥 SECCIÓN INCREMENTAL: DROPZONE DE CONTINGENCIA */}
+      {/* 📥 SECCIÓN INCREMENTAL */}
       <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-5 space-y-4 shadow-inner">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
@@ -516,19 +300,19 @@ export default function ResultsTable() {
             </h3>
             <p className="text-xs text-gray-400">
               Arrastra nuevos archivos XML aquí. Se añadirán al vuelo sin
-              alterar tus cruces ni recargar la página.
+              alterar tus cruces.
             </p>
           </div>
           {isAddingInvoices && (
             <span className="text-xs text-blue-600 font-medium animate-pulse">
-              Procesando y de-duplicando...
+              Procesando...
             </span>
           )}
         </div>
 
         <FileDropzone
           title="Agregar XMLs Adicionales"
-          description="Sueltas tus comprobantes faltantes para rellenar los huecos rojos"
+          description="Sueltas tus comprobantes"
           accept=".xml"
           multiple={true}
           icon="➕"
@@ -537,11 +321,7 @@ export default function ResultsTable() {
 
         {dropzoneFeedback && (
           <div
-            className={`px-4 py-2.5 rounded-xl text-xs font-medium flex justify-between items-center ${
-              dropzoneFeedback.type === "success"
-                ? "bg-emerald-50 border border-emerald-100 text-emerald-800"
-                : "bg-amber-50 border border-amber-100 text-amber-800"
-            }`}
+            className={`px-4 py-2.5 rounded-xl text-xs font-medium flex justify-between items-center ${dropzoneFeedback.type === "success" ? "bg-emerald-50 border border-emerald-100 text-emerald-800" : "bg-amber-50 border border-amber-100 text-amber-800"}`}
           >
             <span>{dropzoneFeedback.msg}</span>
             <button
@@ -553,6 +333,64 @@ export default function ResultsTable() {
           </div>
         )}
       </div>
+
+      {/* 🗺️ MODAL DE PERSISTENCIA (TAILWIND UI CON BACKDROP BLUR) */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-md p-6 transform transition-all animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="text-base font-bold text-gray-900 mb-1">
+              {selectedStatus === "COMPLETED"
+                ? "🔒 Finalizar y Cerrar Auditoría"
+                : "📁 Guardar Progreso Actual"}
+            </h3>
+            <p className="text-xs text-gray-500 mb-4">
+              {selectedStatus === "COMPLETED"
+                ? "La sesión se guardará con estado cerrado para tu histórico contable permanente."
+                : "Se creará un borrador editable para que puedas continuar ajustando los XMLs más tarde."}
+            </p>
+
+            <div className="space-y-1 mb-5">
+              <label
+                htmlFor="modal-title"
+                className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider"
+              >
+                Título de la conciliación
+              </label>
+              <input
+                type="text"
+                id="modal-title"
+                value={conciliationTitle}
+                onChange={(e) => setConciliationTitle(e.target.value)}
+                placeholder="Ej. Conciliación Mensual Impuestos"
+                className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="px-3.5 py-2 text-xs font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSave}
+                disabled={!conciliationTitle.trim() || isSaving}
+                className={`px-4 py-2 text-xs font-bold text-white rounded-xl shadow-xs transition-all cursor-pointer ${
+                  selectedStatus === "COMPLETED"
+                    ? "bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300"
+                    : "bg-amber-600 hover:bg-amber-700 disabled:bg-gray-300"
+                }`}
+              >
+                {isSaving ? "Guardando..." : "Confirmar y Guardar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

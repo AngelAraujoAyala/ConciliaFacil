@@ -32,7 +32,7 @@ export default function BankUploadStep({
       setIsLoading(false);
     }
   };
-
+  
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',

@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
-import { RouterProvider } from 'react-router-dom';
-import { router } from './routes/appRoutes';
-import { useAuthStore } from './store/authStore';
+import { useEffect } from "react";
+import { RouterProvider } from "react-router-dom";
+import { router } from "./routes/appRoutes";
+import { useAuthStore } from "./store/authStore";
+import { Toaster } from "sonner";
 
 export default function App() {
   const initializeAuth = useAuthStore((state) => state.initializeAuth);
@@ -20,5 +21,10 @@ export default function App() {
     );
   }
 
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <Toaster richColors position="top-right" closeButton />
+      <RouterProvider router={router} />
+    </>
+  );
 }
