@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateConciliationDto } from './dto/create-conciliation.dto';
+import { ConciliationStatus } from '@prisma/client';
 
 @Injectable()
 export class ReconciliationsService {
@@ -31,7 +32,7 @@ export class ReconciliationsService {
           totalInvoices: createConciliationDto.totalInvoices,
           totalBankMovements: createConciliationDto.totalBankMovements,
           matchedCount: createConciliationDto.matchedCount,
-          status: 'COMPLETED', // Usamos el Enum de tu schema
+          status: createConciliationDto.status as ConciliationStatus,
           matches: createConciliationDto.matches,
           remainingInvoices: createConciliationDto.remainingInvoices,
           remainingBankMovements: createConciliationDto.remainingBankMovements,

@@ -40,6 +40,11 @@ interface ConciliationState {
   runConciliation: () => void;
   addIncrementalInvoices: (newInvoices: InvoiceXML[]) => { addedCount: number };
   reset: () => void;
+  loadSnapshot: (snapshot: {
+    matches: ConciliationMatch[];
+    remainingInvoices: InvoiceXML[];
+    remainingBankMovements: BankMovement[];
+  }) => void;
 }
 
 export const useConciliationStore = create<ConciliationState>()(
@@ -120,6 +125,38 @@ export const useConciliationStore = create<ConciliationState>()(
           matches: [],
           remainingInvoices: [],
           remainingBankMovements: [],
+        });
+      },
+
+      // --- ACCION: REANUDAR DESDE SNAPSHOT ---
+      loadSnapshot: (snapshot) => {
+        const uniqueMovements = new Map<string, BankMovement>();
+        snapshot.matches.forEach((m) => {
+          if (m.bankMovement) {
+            uniqueMovements.set(m.bankMovement.id, m.bankMovement);
+          }
+        });
+        snapshot.remainingBankMovements.forEach((m) => {
+          uniqueMovements.set(m.id, m);
+        });
+
+        const uniqueInvoices = new Map<string, InvoiceXML>();
+        snapshot.matches.forEach((m) => {
+          if (m.matchedInvoice) {
+            uniqueInvoices.set(m.matchedInvoice.id, m.matchedInvoice);
+          }
+        });
+        snapshot.remainingInvoices.forEach((inv) => {
+          uniqueInvoices.set(inv.id, inv);
+        });
+
+        set({
+          currentStep: "RESULTS",
+          matches: snapshot.matches,
+          remainingInvoices: snapshot.remainingInvoices,
+          remainingBankMovements: snapshot.remainingBankMovements,
+          movements: Array.from(uniqueMovements.values()),
+          invoices: Array.from(uniqueInvoices.values()),
         });
       },
     }),

@@ -15,6 +15,10 @@ export class CreateConciliationDto {
   @IsNotEmpty()
   userId!: string; // ID del contador o usuario dueño de la info
 
+  @IsString()
+  @IsNotEmpty()
+  status!: string; // Estado de la conciliación: 'DRAFT' o 'COMPLETED'
+
   @IsNumber()
   successRate!: number;
 

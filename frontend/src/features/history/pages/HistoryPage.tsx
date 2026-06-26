@@ -3,10 +3,19 @@ import { useConciliationHistory, useConciliationDetail } from "../../conciliatio
 import { HistoryTable } from "../components/HistoryTable";
 import { HistoryDetailPanel } from "../components/HistoryDetailPanel";
 import { HistorySkeleton } from "../components/HistorySkeleton";
+import { useFilteredHistory } from "../hooks/useFilteredHistory";
 
 export const HistoryPage: React.FC = () => {
   const { data: history, isLoading, isError, error } = useConciliationHistory();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const {
+    searchTerm,
+    setSearchTerm,
+    statusFilter,
+    setStatusFilter,
+    filteredHistory,
+  } = useFilteredHistory(history);
 
   // Consulta detallada perezosa (Lazy)
   const { data: detail, isLoading: isLoadingDetail } =
@@ -37,11 +46,74 @@ export const HistoryPage: React.FC = () => {
         </p>
       </div>
 
+      {/* 🔍 BARRA DE BÚSQUEDA Y FILTROS PREMIUM */}
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Input de Búsqueda */}
+        <div className="relative flex-1 max-w-md">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </span>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar por título de conciliación..."
+            className="w-full pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white transition-all"
+          />
+        </div>
+
+        {/* Control Segmentado (Filtros de Estado) */}
+        <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/50">
+          <button
+            onClick={() => setStatusFilter("ALL")}
+            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 cursor-pointer ${
+              statusFilter === "ALL"
+                ? "bg-white text-slate-800 shadow-sm font-bold"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            Todos
+          </button>
+          <button
+            onClick={() => setStatusFilter("DRAFT")}
+            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 cursor-pointer ${
+              statusFilter === "DRAFT"
+                ? "bg-amber-500 text-white shadow-sm font-bold"
+                : "text-slate-500 hover:text-amber-600"
+            }`}
+          >
+            Borradores
+          </button>
+          <button
+            onClick={() => setStatusFilter("COMPLETED")}
+            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 cursor-pointer ${
+              statusFilter === "COMPLETED"
+                ? "bg-emerald-600 text-white shadow-sm font-bold"
+                : "text-slate-500 hover:text-emerald-600"
+            }`}
+          >
+            Completadas
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* COMPONENTE: LISTADO DE AUDITORÍAS */}
         <div className="lg:col-span-2">
           <HistoryTable
-            history={history}
+            history={filteredHistory}
             selectedId={selectedId}
             onSelectRow={setSelectedId}
           />

@@ -1,4 +1,6 @@
 import React, { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { useConciliationStore } from "../../../store/useConciliationStore";
 import type { ConciliationDetail } from "../../conciliation/types/history.types";
 
 interface HistoryDetailPanelProps {
@@ -12,6 +14,18 @@ export const HistoryDetailPanel: React.FC<HistoryDetailPanelProps> = ({
   detail,
   isLoadingDetail,
 }) => {
+  const navigate = useNavigate();
+  const loadSnapshot = useConciliationStore((state) => state.loadSnapshot);
+
+  const handleResume = () => {
+    if (!detail) return;
+    loadSnapshot({
+      matches: detail.matches,
+      remainingInvoices: detail.remainingInvoices,
+      remainingBankMovements: detail.remainingBankMovements,
+    });
+    navigate("/home/nueva-conciliacion");
+  };
   // 🧮 Memorizamos los cálculos basados en el comportamiento del motor
   const metrics = useMemo(() => {
     if (!detail) return { realMatchesCount: 0, totalUnreconciled: 0 };
@@ -127,6 +141,23 @@ export const HistoryDetailPanel: React.FC<HistoryDetailPanelProps> = ({
           </div>
         </div>
       </div>
+
+      {detail.status === "DRAFT" && (
+        <div className="pt-2">
+          <button
+            onClick={handleResume}
+            className="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-bold rounded-xl text-white bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 duration-150 cursor-pointer"
+          >
+            <svg
+              className="w-4 h-4 mr-2 text-white fill-current"
+              viewBox="0 0 24 24"
+            >
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            Reanudar Conciliación
+          </button>
+        </div>
+      )}
 
       <div className="pt-2">
         <button

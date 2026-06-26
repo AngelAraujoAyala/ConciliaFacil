@@ -55,8 +55,17 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
                   }`}
                 >
                   <td className="px-6 py-4">
-                    <div className="font-semibold text-slate-800">
-                      {item.title}
+                    <div className="font-semibold text-slate-800 flex items-center gap-2">
+                      <span>{item.title}</span>
+                      {item.status === "DRAFT" ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                          Borrador
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                          Completada
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-slate-400 font-mono mt-0.5">
                       {item.id.substring(0, 8)}...
