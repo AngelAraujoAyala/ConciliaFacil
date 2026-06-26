@@ -8,13 +8,22 @@ const createConciliationRequest = async (
   payload: CreateConciliationDto,
 ): Promise<void> => {
   try {
-    await apiClient.post("/reconciliations", payload);
+    if (payload.id) {
+      // Flujo REANUDAR: el registro ya existe en BD → actualizamos con PATCH
+      // El id viaja como URL param; lo excluimos del body para mantener el DTO limpio.
+      const { id, ...body } = payload;
+      await apiClient.patch(`/reconciliations/${id}`, body);
+    } else {
+      // Flujo NUEVO: no hay registro previo → creamos con POST
+      await apiClient.post("/reconciliations", payload);
+    }
   } catch (error: any) {
     const errorMessage =
       error.response?.data?.message || "Error al guardar la conciliación bancaria.";
     throw new Error(errorMessage);
   }
 };
+
 
 export function useCreateConciliation() {
   const resetStore = useConciliationStore((state) => state.reset);

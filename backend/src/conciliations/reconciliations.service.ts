@@ -2,6 +2,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateConciliationDto } from './dto/create-conciliation.dto';
@@ -49,6 +50,69 @@ export class ReconciliationsService {
       console.error('Error al guardar conciliación JSONB:', error);
       throw new InternalServerErrorException(
         'No se pudo guardar la sesión de conciliación en la base de datos.',
+      );
+    }
+  }
+
+  /**
+   * Actualiza una conciliación existente (flujo "Reanudar").
+   * Verifica ownership antes de mutar para blindaje multi-tenant.
+   */
+  async updateOne(
+    id: string,
+    dto: CreateConciliationDto,
+    userEmail?: string,
+  ) {
+    try {
+      // Idempotente: asegurar que el usuario exista en la tabla local
+      await this.prisma.user.upsert({
+        where: { id: dto.userId },
+        update: {},
+        create: {
+          id: dto.userId,
+          email: userEmail || 'user@example.com',
+        },
+      });
+
+      // ✅ BLINDAJE MULTI-TENANT: verificar que el registro pertenece al usuario
+      // antes de ejecutar cualquier mutación sobre la base de datos.
+      const existing = await this.prisma.conciliation.findFirst({
+        where: { id, userId: dto.userId },
+        select: { id: true },
+      });
+
+      if (!existing) {
+        throw new ForbiddenException(
+          'No se encontró la conciliación o no tienes permiso para modificarla.',
+        );
+      }
+
+      // UPDATE QUIRÚRGICO: reemplazamos el snapshot completo con el estado actual
+      const updated = await this.prisma.conciliation.update({
+        where: { id },
+        data: {
+          title: dto.title,
+          successRate: dto.successRate,
+          totalInvoices: dto.totalInvoices,
+          totalBankMovements: dto.totalBankMovements,
+          matchedCount: dto.matchedCount,
+          status: dto.status as ConciliationStatus,
+          matches: dto.matches,
+          remainingInvoices: dto.remainingInvoices,
+          remainingBankMovements: dto.remainingBankMovements,
+        },
+      });
+
+      return {
+        success: true,
+        message: 'La conciliación ha sido actualizada exitosamente.',
+        id: updated.id,
+      };
+    } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
+      console.error('Error al actualizar conciliación:', error);
+      throw new InternalServerErrorException(
+        'No se pudo actualizar la sesión de conciliación en la base de datos.',
       );
     }
   }

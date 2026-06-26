@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Patch,
   Get,
   Body,
   Param,
@@ -35,6 +36,25 @@ export class ReconciliationsController {
       );
     }
     return this.reconciliationsService.createBulk(createConciliationDto, user.email);
+  }
+
+  @Patch(':id')
+  @HttpCode(HttpStatus.OK)
+  update(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() createConciliationDto: CreateConciliationDto,
+    @CurrentUser() user: any,
+  ) {
+    if (createConciliationDto.userId !== user.id) {
+      throw new ForbiddenException(
+        'No tienes permiso para modificar una conciliación de otro usuario.',
+      );
+    }
+    return this.reconciliationsService.updateOne(
+      id,
+      createConciliationDto,
+      user.email,
+    );
   }
 
   @Get()

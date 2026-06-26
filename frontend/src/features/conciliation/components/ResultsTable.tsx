@@ -7,6 +7,11 @@ import type { InvoiceXML } from "../../../types";
 import { useCreateConciliation } from "../hooks/useCreateConciliation";
 import { useAuthStore } from "../../../store/authStore";
 import type { CreateConciliationDto } from "../types/conciliation-payload";
+import {
+  countUniqueBankMovements,
+  dedupeRemainingBankMovements,
+  getRealMatches,
+} from "../utils/bankMovementMetrics";
 
 // Componentes extraídos atomizados
 import SummaryCards from "./SummaryCards";
@@ -23,6 +28,8 @@ export default function ResultsTable() {
     matches,
     remainingInvoices,
     remainingBankMovements,
+    activeConciliationId,
+    activeConciliationTitle,
     reset,
     addIncrementalInvoices,
   } = useConciliationStore();
@@ -44,9 +51,18 @@ export default function ResultsTable() {
   // Inyectamos la mutación de TanStack Query
   const { mutate, isPending: isSaving } = useCreateConciliation();
 
-  // 🧮 KPIs reactivos heredados
+  // 🧮 KPIs reactivos — fuente de verdad única y estricta
   const summary = useMemo(() => {
-    const totalBankMovements = matches.length;
+    const realMatches = getRealMatches(matches);
+    const cleanRemainingBank = dedupeRemainingBankMovements(
+      matches,
+      remainingBankMovements,
+    );
+    const totalBankMovements = countUniqueBankMovements(
+      matches,
+      cleanRemainingBank,
+    );
+
     const fullyConciliated = matches.filter(
       (m) =>
         m.status === "TOTAL_MATCH" || (m.status as string) === "MANUAL_MATCH",
@@ -60,9 +76,7 @@ export default function ResultsTable() {
 
     return {
       totalBankMovements,
-      totalInvoices:
-        matches.filter((m) => m.matchedInvoice).length +
-        remainingInvoices.length,
+      totalInvoices: realMatches.length + remainingInvoices.length,
       fullyConciliated,
       unreconciledBank,
       reviewNeeded,
@@ -72,13 +86,17 @@ export default function ResultsTable() {
           ? Math.round((fullyConciliated / totalBankMovements) * 100)
           : 0,
     };
-  }, [matches, remainingInvoices]);
+  }, [matches, remainingInvoices, remainingBankMovements]);
 
-  // 🛠️ Control de flujo: Preparar modal y pre-llenar título sugerido
+  // 🛠️ Control de flujo: Preparar modal y pre-llenar título
   const handleOpenSaveModal = (status: "DRAFT" | "COMPLETED") => {
     if (matches.length === 0) return;
 
-    const defaultTitle = `Conciliación - ${new Date().toLocaleDateString("es-MX", { month: "long", year: "numeric" })}`;
+    // Si se está reanudando un DRAFT, respetar el título original del registro.
+    // Si es una conciliación nueva, generar uno sugerido por fecha.
+    const defaultTitle =
+      activeConciliationTitle ??
+      `Conciliación - ${new Date().toLocaleDateString("es-MX", { month: "long", year: "numeric" })}`;
 
     setConciliationTitle(defaultTitle);
     setSelectedStatus(status);
@@ -95,25 +113,42 @@ export default function ResultsTable() {
     )
       return;
 
-    // 1. Los cruces reales son los que SÍ lograron emparejar una factura (Evitamos estados 'NO_MATCH')
-    const realMatches = matches.filter((m) => m.status !== "NO_MATCH");
+    // 1. Cruces reales y remaining limpio (idempotente por ID de movimiento)
+    const realMatches = getRealMatches(matches);
+    const cleanRemainingBankMovements = dedupeRemainingBankMovements(
+      matches,
+      remainingBankMovements,
+    );
 
     const payload: CreateConciliationDto & { status: "DRAFT" | "COMPLETED" } = {
+      // Si activeConciliationId existe, el hook usará PATCH para actualizar el registro existente.
+      // Si es null (conciliación nueva), el hook usará POST para crear uno nuevo.
+      ...(activeConciliationId ? { id: activeConciliationId } : {}),
       title: conciliationTitle.trim(),
       status: selectedStatus,
       userId: user.id,
       successRate: summary.successRate,
 
-      // 2. MATEMÁTICA PURA CON FUENTES DE VERDAD UNIFICADAS:
       totalInvoices: realMatches.length + remainingInvoices.length,
-      totalBankMovements: realMatches.length + remainingBankMovements.length,
+      totalBankMovements: countUniqueBankMovements(
+        matches,
+        cleanRemainingBankMovements,
+      ),
       matchedCount: realMatches.length,
 
-      // 3. ENVÍO DE SNAPSHOTS NATIVOS A POSTGRESQL (JSONB)
       matches: matches,
       remainingInvoices: remainingInvoices,
-      remainingBankMovements: remainingBankMovements,
+      remainingBankMovements: cleanRemainingBankMovements,
     };
+
+    console.log("DEBUG PAYLOAD:", {
+      totalBankMovements: payload.totalBankMovements,
+      realMatches: realMatches.length,
+      remainingBankMovements: cleanRemainingBankMovements.length,
+      matchesRows: matches.length,
+      remainingBankIds: cleanRemainingBankMovements.map((m) => m.id),
+      matchedBankIds: realMatches.map((m) => m.bankMovement.id),
+    });
 
     mutate(payload);
     setIsModalOpen(false);
@@ -132,7 +167,16 @@ export default function ResultsTable() {
         observations: `Desfase de ${new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(diff)} aprobado manualmente.`,
       };
     });
-    useConciliationStore.setState({ matches: updatedMatches });
+
+    const cleanRemaining = dedupeRemainingBankMovements(
+      updatedMatches,
+      remainingBankMovements,
+    );
+
+    useConciliationStore.setState({
+      matches: updatedMatches,
+      remainingBankMovements: cleanRemaining,
+    });
   };
 
   // 🔄 EVENTO: REASIGNACIÓN MANUAL DESDE SELECTOR
@@ -181,9 +225,22 @@ export default function ResultsTable() {
       };
     });
 
+    let updatedRemainingBank = dedupeRemainingBankMovements(
+      updatedMatches,
+      remainingBankMovements,
+    );
+
+    if (!newInvoice) {
+      const orphan = currentMatch.bankMovement;
+      if (!updatedRemainingBank.some((m) => m.id === orphan.id)) {
+        updatedRemainingBank = [...updatedRemainingBank, orphan];
+      }
+    }
+
     useConciliationStore.setState({
       matches: updatedMatches,
       remainingInvoices: updatedUnmatched,
+      remainingBankMovements: updatedRemainingBank,
     });
   };
 

@@ -6,6 +6,7 @@ import {
 } from "zustand/middleware";
 import { get, set, del } from "idb-keyval";
 import { executeReconciliation } from "../features/conciliation/utils/reconciliationEngine";
+import { dedupeRemainingBankMovements } from "../features/conciliation/utils/bankMovementMetrics";
 import type { BankMovement, InvoiceXML, ConciliationMatch } from "../types";
 
 const indexedDBStorage: StateStorage = {
@@ -25,6 +26,8 @@ export type ConciliationStep = "BANK_UPLOAD" | "INVOICE_UPLOAD" | "RESULTS";
 interface ConciliationState {
   // Estado
   currentStep: ConciliationStep;
+  activeConciliationId: string | null;    // ID del DRAFT que se está reanudando (null = nueva conciliación)
+  activeConciliationTitle: string | null;  // Título original del DRAFT reanudado (null = conciliación nueva)
   movements: BankMovement[];
   invoices: InvoiceXML[];
   matches: ConciliationMatch[];
@@ -41,6 +44,8 @@ interface ConciliationState {
   addIncrementalInvoices: (newInvoices: InvoiceXML[]) => { addedCount: number };
   reset: () => void;
   loadSnapshot: (snapshot: {
+    id: string;     // ID del registro en BD a reanudar
+    title: string;  // Título original del registro a reanudar
     matches: ConciliationMatch[];
     remainingInvoices: InvoiceXML[];
     remainingBankMovements: BankMovement[];
@@ -52,6 +57,8 @@ export const useConciliationStore = create<ConciliationState>()(
     (set, get) => ({
       // --- ESTADO INICIAL ---
       currentStep: "BANK_UPLOAD",
+      activeConciliationId: null,
+      activeConciliationTitle: null,
       movements: [],
       invoices: [],
       matches: [],
@@ -120,6 +127,8 @@ export const useConciliationStore = create<ConciliationState>()(
       reset: () => {
         set({
           currentStep: "BANK_UPLOAD",
+          activeConciliationId: null,
+          activeConciliationTitle: null,
           movements: [],
           invoices: [],
           matches: [],
@@ -150,11 +159,18 @@ export const useConciliationStore = create<ConciliationState>()(
           uniqueInvoices.set(inv.id, inv);
         });
 
+        const cleanRemainingBankMovements = dedupeRemainingBankMovements(
+          snapshot.matches,
+          snapshot.remainingBankMovements,
+        );
+
         set({
+          activeConciliationId: snapshot.id,       // ⭐ Persiste el ID para el upsert posterior
+          activeConciliationTitle: snapshot.title, // ⭐ Persiste el título para el modal de guardado
           currentStep: "RESULTS",
           matches: snapshot.matches,
           remainingInvoices: snapshot.remainingInvoices,
-          remainingBankMovements: snapshot.remainingBankMovements,
+          remainingBankMovements: cleanRemainingBankMovements,
           movements: Array.from(uniqueMovements.values()),
           invoices: Array.from(uniqueInvoices.values()),
         });

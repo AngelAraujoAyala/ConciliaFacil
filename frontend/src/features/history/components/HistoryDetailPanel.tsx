@@ -20,6 +20,8 @@ export const HistoryDetailPanel: React.FC<HistoryDetailPanelProps> = ({
   const handleResume = () => {
     if (!detail) return;
     loadSnapshot({
+      id: detail.id,              // ⭐ Pieza clave: el ID viaja al store para el upsert posterior
+      title: detail.title,        // ⭐ Título original: pre-llena el modal de guardado
       matches: detail.matches,
       remainingInvoices: detail.remainingInvoices,
       remainingBankMovements: detail.remainingBankMovements,
