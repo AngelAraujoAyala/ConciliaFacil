@@ -10,8 +10,18 @@ import { CreateConciliationDto } from './dto/create-conciliation.dto';
 export class ReconciliationsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createBulk(createConciliationDto: CreateConciliationDto) {
+  async createBulk(createConciliationDto: CreateConciliationDto, userEmail?: string) {
     try {
+      // Aseguramos que el usuario exista en la base de datos local para evitar violaciones de clave foránea (P2003)
+      await this.prisma.user.upsert({
+        where: { id: createConciliationDto.userId },
+        update: {},
+        create: {
+          id: createConciliationDto.userId,
+          email: userEmail || 'user@example.com',
+        },
+      });
+
       // Al ser un esquema basado en documentos JSONB, guardamos todo en un solo query atómico
       const newConciliation = await this.prisma.conciliation.create({
         data: {
