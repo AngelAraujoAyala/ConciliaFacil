@@ -17,6 +17,7 @@ export interface ConciliationSummary {
   schemaVersion: number;
   createdAt: string;
   updatedAt: string;
+  movements?: BankMovement[];
 }
 
 export interface ConciliationDetail extends ConciliationSummary {

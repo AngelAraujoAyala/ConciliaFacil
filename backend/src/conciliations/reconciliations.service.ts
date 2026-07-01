@@ -147,6 +147,7 @@ export class ReconciliationsService {
           schemaVersion: true,
           createdAt: true,
           updatedAt: true,
+          movements: true,
         },
         orderBy: {
           createdAt: 'desc', // Las más recientes primero
