@@ -17,9 +17,13 @@ const createConciliationRequest = async (
       // Flujo NUEVO: no hay registro previo → creamos con POST
       await apiClient.post("/reconciliations", payload);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const axiosError = error as {
+      response?: { data?: { message?: string } };
+    };
     const errorMessage =
-      error.response?.data?.message || "Error al guardar la conciliación bancaria.";
+      axiosError.response?.data?.message ||
+      "Error al guardar la conciliación bancaria.";
     throw new Error(errorMessage);
   }
 };

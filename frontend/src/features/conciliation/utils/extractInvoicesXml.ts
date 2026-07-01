@@ -46,13 +46,9 @@ const parseSingleXml = (xmlText: string): InvoiceXML | null => {
 
   const fechaRaw = comprobante.getAttribute("Fecha") || ""; // Formato SAT: YYYY-MM-DDTHH:mm:ss
   const fecha = fechaRaw.split("T")[0]; // Nos quedamos solo con YYYY-MM-DD
-  const totalStr = comprobante.getAttribute("Total") || "0";
-  const total = parseFloat(totalStr);
-
-  // TipoDeComprobante: 'I' = Ingreso, 'E' = Egreso
   const tipoComprobanteSat =
     comprobante.getAttribute("TipoDeComprobante") || "I";
-  const type = tipoComprobanteSat === "E" ? "EGRESO" : "INGRESO";
+  const type = tipoComprobanteSat === "E" ? "EGRESO" : (tipoComprobanteSat === "P" ? "INGRESO" : "INGRESO");
 
   // 2. Datos de Emisor y Receptor
   const rfcEmisor = getElementAttribute(xmlDoc, "Emisor", "Rfc");
@@ -68,8 +64,20 @@ const parseSingleXml = (xmlText: string): InvoiceXML | null => {
   // Si no tiene UUID, no es una factura timbrada válida para conciliar
   if (!uuid) return null;
 
+  let totalStr: string;
+  if (tipoComprobanteSat === "P") {
+    let pagoElement = xmlDoc.getElementsByTagName("pago20:Pago")[0];
+    if (!pagoElement) pagoElement = xmlDoc.getElementsByTagName("Pago")[0];
+
+    totalStr = pagoElement?.getAttribute("Monto") || "0";
+  } else {
+    totalStr = comprobante.getAttribute("Total") || "0";
+  }
+
+  const total = parseFloat(totalStr);
+
   return {
-    id: uuid, // Usamos el propio UUID del SAT como ID único en nuestra app
+    id: uuid,
     uuid,
     date: fecha,
     total,
@@ -78,6 +86,8 @@ const parseSingleXml = (xmlText: string): InvoiceXML | null => {
     nameEmisor,
     rfcReceptor,
     nameReceptor,
+    matchedMovementIds: [],
+    isComplemento: tipoComprobanteSat === "P",
   };
 };
 

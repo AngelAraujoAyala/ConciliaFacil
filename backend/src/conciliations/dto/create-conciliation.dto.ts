@@ -2,6 +2,7 @@ import {
   IsArray,
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
   IsUUID,
 } from 'class-validator';
@@ -13,11 +14,11 @@ export class CreateConciliationDto {
 
   @IsUUID()
   @IsNotEmpty()
-  userId!: string; // ID del contador o usuario dueño de la info
+  userId!: string;
 
   @IsString()
   @IsNotEmpty()
-  status!: string; // Estado de la conciliación: 'DRAFT' o 'COMPLETED'
+  status!: string;
 
   @IsNumber()
   successRate!: number;
@@ -31,13 +32,24 @@ export class CreateConciliationDto {
   @IsNumber()
   matchedCount!: number;
 
-  @IsArray()
-  @IsNotEmpty()
-  matches!: any[]; // El array ConciliationMatch[] proveniente de Zustand
+  @IsNumber()
+  @IsOptional()
+  schemaVersion?: number;
 
   @IsArray()
-  remainingInvoices!: any[]; // Facturas sin movimiento
+  matches!: Record<string, unknown>[];
 
   @IsArray()
-  remainingBankMovements!: any[]; // Movimientos de banco sin factura
+  @IsOptional()
+  movements?: Record<string, unknown>[];
+
+  @IsArray()
+  @IsOptional()
+  invoices?: Record<string, unknown>[];
+
+  @IsArray()
+  remainingInvoices!: Record<string, unknown>[];
+
+  @IsArray()
+  remainingBankMovements!: Record<string, unknown>[];
 }

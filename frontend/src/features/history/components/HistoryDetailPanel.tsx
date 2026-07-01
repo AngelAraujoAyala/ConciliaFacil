@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useConciliationStore } from "../../../store/useConciliationStore";
 import type { ConciliationDetail } from "../../conciliation/types/history.types";
+import { getConciliatedGroups } from "../../conciliation/utils/bankMovementMetrics";
 
 interface HistoryDetailPanelProps {
   selectedId: string | null;
@@ -20,31 +21,25 @@ export const HistoryDetailPanel: React.FC<HistoryDetailPanelProps> = ({
   const handleResume = () => {
     if (!detail) return;
     loadSnapshot({
-      id: detail.id,              // ⭐ Pieza clave: el ID viaja al store para el upsert posterior
-      title: detail.title,        // ⭐ Título original: pre-llena el modal de guardado
+      id: detail.id,
+      title: detail.title,
       matches: detail.matches,
+      movements: detail.movements ?? [],
+      invoices: detail.invoices ?? [],
       remainingInvoices: detail.remainingInvoices,
       remainingBankMovements: detail.remainingBankMovements,
     });
     navigate("/home/nueva-conciliacion");
   };
-  // 🧮 Memorizamos los cálculos basados en el comportamiento del motor
+
   const metrics = useMemo(() => {
     if (!detail) return { realMatchesCount: 0, totalUnreconciled: 0 };
 
-    // 1. Los cruces reales son aquellos que no se quedaron en estado de fallo
-    const realMatchesCount = detail.matches.filter(
-      (m) => m.status !== "NO_MATCH" && m.matchedInvoice !== null,
-    ).length;
-
-    // 2. La diferencia total real de elementos huérfanos en el snapshot
+    const realMatchesCount = getConciliatedGroups(detail.matches).length;
     const totalUnreconciled =
       detail.remainingInvoices.length + detail.remainingBankMovements.length;
 
-    return {
-      realMatchesCount,
-      totalUnreconciled,
-    };
+    return { realMatchesCount, totalUnreconciled };
   }, [detail]);
 
   if (!selectedId) {
@@ -91,16 +86,18 @@ export const HistoryDetailPanel: React.FC<HistoryDetailPanelProps> = ({
         </h2>
         <p className="text-xs text-slate-400 mt-1">
           ID: <span className="font-mono text-[11px]">{detail.id}</span>
+          {detail.schemaVersion && (
+            <span className="ml-2">· v{detail.schemaVersion}</span>
+          )}
         </p>
       </div>
 
       <hr className="border-slate-100" />
 
-      {/* Tarjetas de Indicadores Principales */}
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
           <div className="text-xs text-slate-400 font-medium">
-            Cruces Exitosos
+            Grupos Conciliados
           </div>
           <div className="text-lg font-bold text-slate-800">
             {metrics.realMatchesCount}
@@ -116,17 +113,16 @@ export const HistoryDetailPanel: React.FC<HistoryDetailPanelProps> = ({
         </div>
       </div>
 
-      {/* desglose de la Estructura Interna del JSONB */}
       <div className="space-y-3">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
           Estructura del Snapshot
         </h3>
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs p-2.5 rounded-md bg-slate-50 text-slate-700 font-medium">
-            <span>Lista de Cruces:</span>
+            <span>Grupos M:N:</span>
             <span className="font-mono bg-white px-2 py-0.5 rounded border shadow-sm">
-              {metrics.realMatchesCount} exitosos / {detail.matches.length}{" "}
-              filas
+              {metrics.realMatchesCount} conciliados / {detail.matches.length}{" "}
+              grupos
             </span>
           </div>
           <div className="flex items-center justify-between text-xs p-2.5 rounded-md bg-slate-50 text-slate-700 font-medium">

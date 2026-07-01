@@ -3,35 +3,39 @@ import { useState, useMemo } from "react";
 import { useConciliationStore } from "../../../store/useConciliationStore";
 import FileDropzone from "./FileDropzone";
 import { extractInvoicesXml } from "../utils/extractInvoicesXml";
-import type { InvoiceXML } from "../../../types";
 import { useCreateConciliation } from "../hooks/useCreateConciliation";
 import { useAuthStore } from "../../../store/authStore";
 import type { CreateConciliationDto } from "../types/conciliation-payload";
 import {
   countUniqueBankMovements,
+  countUniqueInvoices,
   dedupeRemainingBankMovements,
-  getRealMatches,
+  getConciliatedGroups,
+  computeSuccessRate,
+  countFullyConciliatedMovements,
 } from "../utils/bankMovementMetrics";
 
-// Componentes extraídos atomizados
 import SummaryCards from "./SummaryCards";
-import UnmatchedInvoicesTable from "./UnmatchedInvoicesTable";
-import MatchesTable from "./MatchesTable";
+import GroupsTable from "./GroupsTable";
+import ManualMatchPanel from "./ManualMatchPanel";
 
-type TabType = "ALL" | "MATCHED" | "ISSUES" | "UNMATCHED_INVOICES";
+type TabType = "ALL" | "MATCHED" | "ISSUES" | "MANUAL";
 
 export default function ResultsTable() {
   const user = useAuthStore((state) => state.user);
 
-  // 🎯 SOLUCIÓN: Unificamos todas las variables del store en una sola desestructuración limpia arriba
   const {
     matches,
+    movements,
+    invoices,
     remainingInvoices,
     remainingBankMovements,
     activeConciliationId,
     activeConciliationTitle,
     reset,
     addIncrementalInvoices,
+    approveGroupDiscrepancy,
+    unmatchGroup,
   } = useConciliationStore();
 
   const [activeTab, setActiveTab] = useState<TabType>("ALL");
@@ -41,59 +45,51 @@ export default function ResultsTable() {
     type: "success" | "error";
   } | null>(null);
 
-  // 📝 Estados locales para el modal de persistencia y títulos personalizados
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [conciliationTitle, setConciliationTitle] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<
     "DRAFT" | "COMPLETED" | null
   >(null);
 
-  // Inyectamos la mutación de TanStack Query
   const { mutate, isPending: isSaving } = useCreateConciliation();
 
-  // 🧮 KPIs reactivos — fuente de verdad única y estricta
   const summary = useMemo(() => {
-    const realMatches = getRealMatches(matches);
     const cleanRemainingBank = dedupeRemainingBankMovements(
       matches,
       remainingBankMovements,
     );
-    const totalBankMovements = countUniqueBankMovements(
-      matches,
-      cleanRemainingBank,
-    );
-
-    const fullyConciliated = matches.filter(
-      (m) =>
-        m.status === "TOTAL_MATCH" || (m.status as string) === "MANUAL_MATCH",
-    ).length;
-    const unreconciledBank = matches.filter(
-      (m) => m.status === "NO_MATCH",
-    ).length;
+    const totalBankMovements = countUniqueBankMovements(movements);
+    const totalInvoices = countUniqueInvoices(invoices);
+    const fullyConciliated = countFullyConciliatedMovements(matches);
     const reviewNeeded = matches.filter(
-      (m) => m.status === "MULTIPLE_MATCHES",
+      (g) => g.status === "PARTIAL_MATCH" || g.status === "PENDING",
     ).length;
 
     return {
       totalBankMovements,
-      totalInvoices: realMatches.length + remainingInvoices.length,
+      totalInvoices,
       fullyConciliated,
-      unreconciledBank,
+      unreconciledBank: cleanRemainingBank.length,
       reviewNeeded,
       unreconciledInvoices: remainingInvoices.length,
-      successRate:
-        totalBankMovements > 0
-          ? Math.round((fullyConciliated / totalBankMovements) * 100)
-          : 0,
+      successRate: computeSuccessRate(matches, totalBankMovements),
     };
-  }, [matches, remainingInvoices, remainingBankMovements]);
+  }, [
+    matches,
+    movements,
+    invoices,
+    remainingInvoices,
+    remainingBankMovements,
+  ]);
 
-  // 🛠️ Control de flujo: Preparar modal y pre-llenar título
+  const hasSessionData =
+    matches.length > 0 ||
+    remainingInvoices.length > 0 ||
+    remainingBankMovements.length > 0;
+
   const handleOpenSaveModal = (status: "DRAFT" | "COMPLETED") => {
-    if (matches.length === 0) return;
+    if (!hasSessionData) return;
 
-    // Si se está reanudando un DRAFT, respetar el título original del registro.
-    // Si es una conciliación nueva, generar uno sugerido por fecha.
     const defaultTitle =
       activeConciliationTitle ??
       `Conciliación - ${new Date().toLocaleDateString("es-MX", { month: "long", year: "numeric" })}`;
@@ -103,148 +99,37 @@ export default function ResultsTable() {
     setIsModalOpen(true);
   };
 
-  // 💾 Confirmación final desde el modal hacia el Backend
   const handleConfirmSave = () => {
-    if (
-      matches.length === 0 ||
-      !user ||
-      !selectedStatus ||
-      !conciliationTitle.trim()
-    )
+    if (!hasSessionData || !user || !selectedStatus || !conciliationTitle.trim())
       return;
 
-    // 1. Cruces reales y remaining limpio (idempotente por ID de movimiento)
-    const realMatches = getRealMatches(matches);
+    const conciliatedGroups = getConciliatedGroups(matches);
     const cleanRemainingBankMovements = dedupeRemainingBankMovements(
       matches,
       remainingBankMovements,
     );
 
     const payload: CreateConciliationDto & { status: "DRAFT" | "COMPLETED" } = {
-      // Si activeConciliationId existe, el hook usará PATCH para actualizar el registro existente.
-      // Si es null (conciliación nueva), el hook usará POST para crear uno nuevo.
       ...(activeConciliationId ? { id: activeConciliationId } : {}),
       title: conciliationTitle.trim(),
       status: selectedStatus,
       userId: user.id,
       successRate: summary.successRate,
-
-      totalInvoices: realMatches.length + remainingInvoices.length,
-      totalBankMovements: countUniqueBankMovements(
-        matches,
-        cleanRemainingBankMovements,
-      ),
-      matchedCount: realMatches.length,
-
-      matches: matches,
-      remainingInvoices: remainingInvoices,
+      schemaVersion: 2,
+      totalInvoices: countUniqueInvoices(invoices),
+      totalBankMovements: countUniqueBankMovements(movements),
+      matchedCount: conciliatedGroups.length,
+      matches,
+      movements,
+      invoices,
+      remainingInvoices,
       remainingBankMovements: cleanRemainingBankMovements,
     };
-
-    console.log("DEBUG PAYLOAD:", {
-      totalBankMovements: payload.totalBankMovements,
-      realMatches: realMatches.length,
-      remainingBankMovements: cleanRemainingBankMovements.length,
-      matchesRows: matches.length,
-      remainingBankIds: cleanRemainingBankMovements.map((m) => m.id),
-      matchedBankIds: realMatches.map((m) => m.bankMovement.id),
-    });
 
     mutate(payload);
     setIsModalOpen(false);
   };
 
-  // ⚡ EVENTO: APROBACIÓN MANUAL
-  const handleApproveDiscrepancy = (matchId: string) => {
-    const updatedMatches = matches.map((m) => {
-      if (m.id !== matchId) return m;
-      const diff = m.matchedInvoice
-        ? m.bankMovement.amount - m.matchedInvoice.total
-        : 0;
-      return {
-        ...m,
-        status: "MANUAL_MATCH" as any,
-        observations: `Desfase de ${new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(diff)} aprobado manualmente.`,
-      };
-    });
-
-    const cleanRemaining = dedupeRemainingBankMovements(
-      updatedMatches,
-      remainingBankMovements,
-    );
-
-    useConciliationStore.setState({
-      matches: updatedMatches,
-      remainingBankMovements: cleanRemaining,
-    });
-  };
-
-  // 🔄 EVENTO: REASIGNACIÓN MANUAL DESDE SELECTOR
-  const handleManualAssign = (matchId: string, selectedInvoiceId: string) => {
-    const currentMatch = matches.find((m) => m.id === matchId);
-    if (!currentMatch) return;
-
-    const previousInvoice = currentMatch.matchedInvoice;
-    let newInvoice: InvoiceXML | null = null;
-    let updatedUnmatched = [...remainingInvoices];
-
-    if (previousInvoice) updatedUnmatched.push(previousInvoice);
-
-    if (selectedInvoiceId !== "none") {
-      const found = updatedUnmatched.find(
-        (inv) => inv.id === selectedInvoiceId,
-      );
-      if (found) {
-        newInvoice = found;
-        updatedUnmatched = updatedUnmatched.filter(
-          (inv) => inv.id !== selectedInvoiceId,
-        );
-      }
-    }
-
-    const updatedMatches = matches.map((m) => {
-      if (m.id !== matchId) return m;
-      let newStatus: "TOTAL_MATCH" | "NO_MATCH" | "MULTIPLE_MATCHES" =
-        "NO_MATCH";
-      let obs = "Asignado manualmente por el usuario.";
-
-      if (newInvoice) {
-        const exactAmount =
-          Math.abs(m.bankMovement.amount - newInvoice.total) < 0.01;
-        newStatus = exactAmount ? "TOTAL_MATCH" : "MULTIPLE_MATCHES";
-        if (!exactAmount) obs = `Match manual con diferencia de pesos.`;
-      } else {
-        obs = "Sin factura vinculada.";
-      }
-
-      return {
-        ...m,
-        matchedInvoice: newInvoice,
-        status: newStatus,
-        observations: obs,
-      };
-    });
-
-    let updatedRemainingBank = dedupeRemainingBankMovements(
-      updatedMatches,
-      remainingBankMovements,
-    );
-
-    if (!newInvoice) {
-      const orphan = currentMatch.bankMovement;
-      if (!updatedRemainingBank.some((m) => m.id === orphan.id)) {
-        updatedRemainingBank = [...updatedRemainingBank, orphan];
-      }
-    }
-
-    useConciliationStore.setState({
-      matches: updatedMatches,
-      remainingInvoices: updatedUnmatched,
-      remainingBankMovements: updatedRemainingBank,
-    });
-  };
-
-  // 📥 EVENTO: DROPZONE INCREMENTAL
   const handleIncrementalInvoicesSelected = async (files: File[]) => {
     if (files.length === 0) return;
     try {
@@ -274,17 +159,15 @@ export default function ResultsTable() {
 
   return (
     <div className="space-y-6">
-      {/* 📊 PANEL DE KPIs */}
       <SummaryCards summary={summary} />
 
-      {/* 🎛️ PESTAÑAS Y ACCIONES DE CABECERA */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-gray-200 pb-2">
         <div className="flex space-x-1 overflow-x-auto w-full lg:w-auto">
           <button
             onClick={() => setActiveTab("ALL")}
             className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all ${activeTab === "ALL" ? "border-b-2 border-blue-600 text-blue-600 font-bold bg-blue-50/20" : "text-gray-500"}`}
           >
-            Todos ({matches.length})
+            Grupos ({matches.length})
           </button>
           <button
             onClick={() => setActiveTab("MATCHED")}
@@ -296,17 +179,16 @@ export default function ResultsTable() {
             onClick={() => setActiveTab("ISSUES")}
             className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all ${activeTab === "ISSUES" ? "border-b-2 border-amber-500 text-amber-600 font-bold bg-amber-50/20" : "text-gray-500"}`}
           >
-            Alertas ({summary.unreconciledBank + summary.reviewNeeded})
+            Alertas ({summary.reviewNeeded})
           </button>
           <button
-            onClick={() => setActiveTab("UNMATCHED_INVOICES")}
-            className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all ${activeTab === "UNMATCHED_INVOICES" ? "border-b-2 border-purple-500 text-purple-600 font-bold bg-purple-50/20" : "text-gray-500"}`}
+            onClick={() => setActiveTab("MANUAL")}
+            className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all ${activeTab === "MANUAL" ? "border-b-2 border-indigo-500 text-indigo-600 font-bold bg-indigo-50/20" : "text-gray-500"}`}
           >
-            Facturas Huérfanas ({UnmatchedInvoicesTable.length})
+            Conciliar ({summary.unreconciledBank + summary.unreconciledInvoices})
           </button>
         </div>
 
-        {/* 🎛️ BOTONERA PROFESIONAL */}
         <div className="flex flex-wrap items-center gap-2 self-end lg:self-auto w-full sm:w-auto justify-end">
           <button
             onClick={() => {
@@ -325,7 +207,7 @@ export default function ResultsTable() {
 
           <button
             onClick={() => handleOpenSaveModal("DRAFT")}
-            disabled={isSaving || matches.length === 0}
+            disabled={isSaving || !hasSessionData}
             className="text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold px-3 py-2 rounded-xl border border-amber-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
           >
             📁 Guardar progreso
@@ -333,7 +215,7 @@ export default function ResultsTable() {
 
           <button
             onClick={() => handleOpenSaveModal("COMPLETED")}
-            disabled={isSaving || matches.length === 0}
+            disabled={isSaving || !hasSessionData}
             className="text-xs bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-xl shadow-xs disabled:bg-gray-300 disabled:cursor-not-allowed transition-all flex items-center gap-1 cursor-pointer"
           >
             {isSaving ? "⏳ Guardando..." : "✅ Marcar como completada"}
@@ -341,22 +223,21 @@ export default function ResultsTable() {
         </div>
       </div>
 
-      {/* 📋 CONTENEDOR DE TABLAS PRINCIPALES */}
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-        {activeTab === "UNMATCHED_INVOICES" ? (
-          <UnmatchedInvoicesTable unmatchedInvoices={remainingInvoices} />
+        {activeTab === "MANUAL" ? (
+          <ManualMatchPanel />
         ) : (
-          <MatchesTable
-            matches={matches}
-            unmatchedInvoices={remainingInvoices}
+          <GroupsTable
+            groups={matches}
+            movements={movements}
+            invoices={invoices}
             activeTab={activeTab}
-            onApproveDiscrepancy={handleApproveDiscrepancy}
-            onManualAssign={handleManualAssign}
+            onApproveDiscrepancy={approveGroupDiscrepancy}
+            onUnmatch={unmatchGroup}
           />
         )}
       </div>
 
-      {/* 📥 SECCIÓN INCREMENTAL */}
       <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-5 space-y-4 shadow-inner">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
@@ -399,7 +280,6 @@ export default function ResultsTable() {
         )}
       </div>
 
-      {/* 🗺️ MODAL DE PERSISTENCIA (TAILWIND UI CON BACKDROP BLUR) */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-md p-6 transform transition-all animate-in fade-in zoom-in-95 duration-200">

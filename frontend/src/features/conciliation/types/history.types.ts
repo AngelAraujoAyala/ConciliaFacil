@@ -1,8 +1,11 @@
-import type { ConciliationMatch, InvoiceXML, BankMovement, } from "../../../types";
+import type {
+  BankMovement,
+  ConciliationGroup,
+  InvoiceXML,
+} from "../../../types";
 
 export type ConciliationStatus = "DRAFT" | "COMPLETED";
 
-// Estructura ligera para listados
 export interface ConciliationSummary {
   id: string;
   title: string;
@@ -11,13 +14,15 @@ export interface ConciliationSummary {
   totalBankMovements: number;
   matchedCount: number;
   successRate: number;
+  schemaVersion: number;
   createdAt: string;
   updatedAt: string;
 }
 
-// Estructura completa para auditorías extendidas
 export interface ConciliationDetail extends ConciliationSummary {
-  matches: ConciliationMatch[];
+  matches: ConciliationGroup[];
+  movements: BankMovement[];
+  invoices: InvoiceXML[];
   remainingInvoices: InvoiceXML[];
   remainingBankMovements: BankMovement[];
 }

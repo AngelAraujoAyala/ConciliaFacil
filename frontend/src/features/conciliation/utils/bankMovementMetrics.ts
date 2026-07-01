@@ -1,42 +1,39 @@
-import type { BankMovement, ConciliationMatch } from "../../../types";
+import type { BankMovement, ConciliationGroup, InvoiceXML } from "../../../types";
 
-/** Cruces con factura vinculada (excluye filas NO_MATCH del motor). */
-export function getRealMatches(matches: ConciliationMatch[]): ConciliationMatch[] {
-  return matches.filter(
-    (m) => m.status !== "NO_MATCH" && m.matchedInvoice !== null,
-  );
+export function getConciliatedGroups(
+  matches: ConciliationGroup[],
+): ConciliationGroup[] {
+  return matches.filter((g) => g.status !== "PENDING");
 }
 
-/**
- * IDs de movimientos bancarios ya emparejados exitosamente.
- * Un movimiento en este set no debe figurar en remainingBankMovements.
- */
 export function getMatchedBankMovementIds(
-  matches: ConciliationMatch[],
+  matches: ConciliationGroup[],
 ): Set<string> {
-  return new Set(getRealMatches(matches).map((m) => m.bankMovement.id));
-}
-
-/**
- * Total inmutable de movimientos bancarios únicos.
- * Unión estricta por ID entre filas de matches y remainingBankMovements.
- */
-export function countUniqueBankMovements(
-  matches: ConciliationMatch[],
-  remainingBankMovements: BankMovement[],
-): number {
   const ids = new Set<string>();
-  matches.forEach((m) => ids.add(m.bankMovement.id));
-  remainingBankMovements.forEach((m) => ids.add(m.id));
-  return ids.size;
+  matches.forEach((g) => g.bankMovementIds.forEach((id) => ids.add(id)));
+  return ids;
 }
 
-/**
- * remainingBankMovements sin duplicados ni movimientos ya emparejados en matches.
- * Evita inflar el contador cuando un NO_MATCH pasa a MANUAL_MATCH/TOTAL_MATCH.
- */
+export function getMatchedInvoiceIds(matches: ConciliationGroup[]): Set<string> {
+  const ids = new Set<string>();
+  matches.forEach((g) => g.invoiceIds.forEach((id) => ids.add(id)));
+  return ids;
+}
+
+export function countUniqueBankMovements(
+  movements: BankMovement[],
+): number {
+  return new Set(movements.map((m) => m.id)).size;
+}
+
+export function countUniqueInvoices(
+  invoices: InvoiceXML[],
+): number {
+  return new Set(invoices.map((inv) => inv.id)).size;
+}
+
 export function dedupeRemainingBankMovements(
-  matches: ConciliationMatch[],
+  matches: ConciliationGroup[],
   remainingBankMovements: BankMovement[],
 ): BankMovement[] {
   const matchedIds = getMatchedBankMovementIds(matches);
@@ -48,4 +45,24 @@ export function dedupeRemainingBankMovements(
     seen.add(m.id);
     return true;
   });
+}
+
+export function countFullyConciliatedMovements(
+  matches: ConciliationGroup[],
+): number {
+  const ids = new Set<string>();
+  matches
+    .filter((g) => g.status === "TOTAL_MATCH" || g.status === "MANUAL_MATCH")
+    .forEach((g) => g.bankMovementIds.forEach((id) => ids.add(id)));
+  return ids.size;
+}
+
+export function computeSuccessRate(
+  matches: ConciliationGroup[],
+  totalBankMovements: number,
+): number {
+  if (totalBankMovements === 0) return 0;
+  return Math.round(
+    (countFullyConciliatedMovements(matches) / totalBankMovements) * 100,
+  );
 }

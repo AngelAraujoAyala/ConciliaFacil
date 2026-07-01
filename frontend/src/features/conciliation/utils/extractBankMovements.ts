@@ -139,6 +139,7 @@ const processCsvText = (text: string): BankMovement[] => {
       amount,
       type,
       status: "UNMATCHED",
+      matchedInvoiceIds: [],
     });
   }
 

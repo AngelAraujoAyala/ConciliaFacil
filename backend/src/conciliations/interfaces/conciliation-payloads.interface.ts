@@ -16,10 +16,16 @@ export interface BankMovement {
   saldo: number;
 }
 
-export interface ConciliationMatch {
+/** Grupo M:N persistido en el campo JSONB `matches`. */
+export interface ConciliationGroup {
   id: string;
-  invoice: InvoiceXML;
-  bankMovement: BankMovement;
-  matchType: 'EXACT' | 'APPROXIMATE' | 'MANUAL';
-  score: number;
+  bankMovementIds: string[];
+  invoiceIds: string[];
+  status: 'TOTAL_MATCH' | 'PARTIAL_MATCH' | 'MANUAL_MATCH' | 'PENDING';
+  source: 'AUTO' | 'MANUAL';
+  observations?: string;
+  bankTotal: number;
+  invoiceTotal: number;
+  amountDelta: number;
+  createdAt: string;
 }

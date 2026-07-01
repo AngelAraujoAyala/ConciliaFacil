@@ -9,8 +9,8 @@ datasource db {
 }
 
 enum ConciliationStatus {
-  DRAFT      // En proceso
-  COMPLETED  // Cerrada/Auditada
+  DRAFT
+  COMPLETED
 }
 
 model User {
@@ -19,7 +19,7 @@ model User {
   isSubscribed          Boolean        @default(false)
   freeConciliationsLeft Int            @default(1)
   conciliations         Conciliation[]
-  
+
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
 
@@ -27,29 +27,30 @@ model User {
 }
 
 model Conciliation {
-  id                    String             @id @default(uuid())
-  title                 String
-  status                ConciliationStatus @default(DRAFT)
-  
-  // --- MÉTRICAS RÁPIDAS (Para listados, KPIs y analíticas ligeras) ---
-  totalInvoices         Int                @default(0)
-  totalBankMovements    Int                @default(0)
-  matchedCount          Int                @default(0)
-  successRate           Int                // Almacena KPI final (ej. 85 para 85%)
+  id                     String             @id @default(uuid())
+  title                  String
+  status                 ConciliationStatus @default(DRAFT)
 
-  // --- DATA CLAVE (Estructuras complejas JSONB) ---
-  matches               Json               // Guarda array de ConciliationMatch[]
-  remainingInvoices     Json               // Guarda array de InvoiceXML[] (Facturas sin movimiento)
-  remainingBankMovements Json               // Guarda array de BankMovement[] (Movimientos sin factura)
+  totalInvoices          Int                @default(0)
+  totalBankMovements     Int                @default(0)
+  matchedCount           Int                @default(0)
+  successRate            Int
+  schemaVersion          Int                @default(2)
 
-  // --- RELACIÓN CON EL DUEÑO DE LA INFORMACIÓN ---
-  userId                String
-  user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
+  // JSONB v2: matches = ConciliationGroup[] (relaciones M:N por IDs)
+  matches                Json
+  movements              Json               @default("[]")
+  invoices               Json               @default("[]")
+  remainingInvoices      Json
+  remainingBankMovements Json
 
-  // Índices para optimizar queries en producción
+  userId                 String
+  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
   @@index([userId])
+  @@index([schemaVersion])
   @@map("conciliations")
 }

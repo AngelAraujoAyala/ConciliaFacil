@@ -1,5 +1,11 @@
+import type {
+  BankMovement,
+  ConciliationGroup,
+  InvoiceXML,
+} from "../../../types";
+
 export interface CreateConciliationDto {
-  id?: string;                   // Opcional: presente solo en el flujo "Reanudar" (upsert → PATCH)
+  id?: string;
   title: string;
   status: string;
   userId: string;
@@ -7,7 +13,10 @@ export interface CreateConciliationDto {
   totalInvoices: number;
   totalBankMovements: number;
   matchedCount: number;
-  matches: unknown[];            // Cambiamos 'any' por 'unknown' para hacer feliz a ESLint
-  remainingInvoices: unknown[];
-  remainingBankMovements: unknown[];
-}
+  schemaVersion: 2;
+  matches: ConciliationGroup[];
+  movements: BankMovement[];
+  invoices: InvoiceXML[];
+  remainingInvoices: InvoiceXML[];
+  remainingBankMovements: BankMovement[];
+}

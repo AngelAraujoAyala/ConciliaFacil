@@ -1,6 +1,5 @@
 export type MatchStatus = "MATCHED" | "PARTIAL" | "UNMATCHED";
 export type MovementType = "INGRESO" | "EGRESO";
-
 export interface BankMovement {
   id: string;
   date: string;
@@ -8,35 +7,52 @@ export interface BankMovement {
   amount: number;
   type: MovementType;
   status: MatchStatus;
-  matchedInvoiceId?: string;
+  matchedInvoiceIds: string[];
+  matchedGroupId?: string;
 }
 
-// export interface Invoice {
-//   id: string;
-//   folio?: string;
-//   rfcEmisor: string;
-//   rfcReceptor: string;
-//   date: string;
-//   amount: number;
-//   filename: string;
-// }
-
 export interface InvoiceXML {
-  id: string; // Identificador interno
-  uuid: string; // Folio Fiscal del SAT (36 caracteres)
-  date: string; // Formato YYYY-MM-DD
-  total: number; // Monto total de la factura
+  id: string;
+  uuid: string;
+  date: string;
+  total: number;
   type: "INGRESO" | "EGRESO";
+  isComplemento?: boolean;
   rfcEmisor: string;
   nameEmisor: string;
   rfcReceptor: string;
   nameReceptor: string;
+  matchedMovementIds: string[];
+  matchedGroupId?: string;
+  status?: MatchStatus;
+}
+
+export type ConciliationGroupStatus =
+  | "TOTAL_MATCH"
+  | "PARTIAL_MATCH"
+  | "MANUAL_MATCH"
+  | "PENDING";
+
+export type ConciliationGroupSource = "AUTO" | "MANUAL";
+
+/** Grupo M:N canónico — se persiste en el campo JSONB `matches`. */
+export interface ConciliationGroup {
+  id: string;
+  bankMovementIds: string[];
+  invoiceIds: string[];
+  status: ConciliationGroupStatus;
+  source: ConciliationGroupSource;
+  observations?: string;
+  bankTotal: number;
+  invoiceTotal: number;
+  amountDelta: number;
+  createdAt: string;
 }
 
 export interface ConciliationRecord {
   id: string;
   title: string;
-  date: string; // Fecha de creación del registro
+  date: string;
   movements: BankMovement[];
   invoices: InvoiceXML[];
   stats: {
@@ -47,17 +63,10 @@ export interface ConciliationRecord {
   };
 }
 
-export interface ConciliationMatch {
-  id: string; // ID único para la fila del reporte
-  bankMovement: BankMovement;
-  matchedInvoice: InvoiceXML | null;
-  status: "TOTAL_MATCH" | "NO_MATCH" | "MULTIPLE_MATCHES";
-  observations?: string;
-}
-
 export interface ReconciliationResult {
-  matches: ConciliationMatch[];
-  unmatchedInvoices: InvoiceXML[];
+  matches: ConciliationGroup[];
+  remainingInvoices: InvoiceXML[];
+  remainingBankMovements: BankMovement[];
   summary: {
     totalBankMovements: number;
     totalInvoices: number;

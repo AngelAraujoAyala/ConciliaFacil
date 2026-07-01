@@ -1,9 +1,9 @@
-import type { BankMovement, InvoiceXML } from "../../../types";
-import type { ConciliationMatch } from "../../../types";
+import type { BankMovement, InvoiceXML, ConciliationGroup } from "../../../types";
+import {
+  computeAmountSummary,
+  resolveGroupStatus,
+} from "./conciliationAmountUtils";
 
-/**
- * Calcula la diferencia en días entre dos cadenas de fecha (YYYY-MM-DD)
- */
 const getDaysDifference = (dateStr1: string, dateStr2: string): number => {
   const d1 = new Date(dateStr1);
   const d2 = new Date(dateStr2);
@@ -11,21 +11,18 @@ const getDaysDifference = (dateStr1: string, dateStr2: string): number => {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
 
-/**
- * Motor de conciliación inteligente
- * @param movements Lista de movimientos bancarios del Paso 1
- * @param invoices Lista de facturas XML del Paso 2
- * @param daysTolerance Días máximos de diferencia permitidos entre banco y factura (por defecto 4)
- */
 export const executeReconciliation = (
   movements: BankMovement[],
   invoices: InvoiceXML[],
   daysTolerance: number = 4,
   amountTolerance: number = 5.0,
-) => {
-  const matches: ConciliationMatch[] = [];
+): {
+  matches: ConciliationGroup[];
+  remainingInvoices: InvoiceXML[];
+  remainingBankMovements: BankMovement[];
+} => {
+  const matches: ConciliationGroup[] = [];
   let remainingInvoices = [...invoices];
-  // 1. Inicializamos el contenedor de movimientos huérfanos
   const remainingBankMovements: BankMovement[] = [];
 
   movements.forEach((movement) => {
@@ -36,34 +33,30 @@ export const executeReconciliation = (
     });
 
     if (potentialMatches.length === 0) {
-      // Mantenemos esto si tu tabla de resultados necesita renderizar la fila vacía
-      matches.push({
-        id: `match-bank-${movement.id}`,
-        bankMovement: movement,
-        matchedInvoice: null,
-        status: "NO_MATCH",
-        observations: "No se encontraron facturas cercanas en monto.",
-      });
-
-      // 2. 🎯 GUARDAMOS EL MOVIMIENTO HUÉRFANO REAL
       remainingBankMovements.push(movement);
       return;
     }
 
-    const matchesWithinTimeWindow = potentialMatches.filter((invoice) => {
-      return getDaysDifference(movement.date, invoice.date) <= daysTolerance;
-    });
+    const matchesWithinTimeWindow = potentialMatches.filter(
+      (invoice) =>
+        getDaysDifference(movement.date, invoice.date) <= daysTolerance,
+    );
 
     if (matchesWithinTimeWindow.length === 1) {
       const luckyInvoice = matchesWithinTimeWindow[0];
-      const exactAmount = Math.abs(luckyInvoice.total - movement.amount) < 0.01;
+      const summary = computeAmountSummary([movement], [luckyInvoice]);
 
       matches.push({
-        id: `match-auto-${movement.id}-${luckyInvoice.id}`,
-        bankMovement: movement,
-        matchedInvoice: luckyInvoice,
-        status: exactAmount ? "TOTAL_MATCH" : "MULTIPLE_MATCHES",
-        observations: exactAmount
+        id: crypto.randomUUID(),
+        bankMovementIds: [movement.id],
+        invoiceIds: [luckyInvoice.id],
+        status: resolveGroupStatus(summary),
+        source: "AUTO",
+        bankTotal: summary.bankTotal,
+        invoiceTotal: summary.invoiceTotal,
+        amountDelta: summary.delta,
+        createdAt: new Date().toISOString(),
+        observations: summary.isWithinTolerance
           ? undefined
           : "Diferencia menor en el monto total.",
       });
@@ -73,32 +66,70 @@ export const executeReconciliation = (
       );
     } else if (matchesWithinTimeWindow.length > 1) {
       const bestInvoice = matchesWithinTimeWindow[0];
+      const summary = computeAmountSummary([movement], [bestInvoice]);
 
       matches.push({
-        id: `match-ambiguous-${movement.id}-${bestInvoice.id}`,
-        bankMovement: movement,
-        matchedInvoice: bestInvoice,
-        status: "MULTIPLE_MATCHES",
-        observations: "Múltiples candidatos o desfase detectado. Ver opciones.",
+        id: crypto.randomUUID(),
+        bankMovementIds: [movement.id],
+        invoiceIds: [bestInvoice.id],
+        status: "PARTIAL_MATCH",
+        source: "AUTO",
+        bankTotal: summary.bankTotal,
+        invoiceTotal: summary.invoiceTotal,
+        amountDelta: summary.delta,
+        createdAt: new Date().toISOString(),
+        observations:
+          "Múltiples candidatos o desfase detectado. Revisar manualmente.",
       });
 
       remainingInvoices = remainingInvoices.filter(
         (inv) => inv.id !== bestInvoice.id,
       );
     } else {
-      matches.push({
-        id: `match-timeout-${movement.id}`,
-        bankMovement: movement,
-        matchedInvoice: null,
-        status: "NO_MATCH",
-        observations: "Facturas similares exceden límite de días.",
-      });
-
-      // 3. 🎯 TAMBIÉN ES HUÉRFANO POR VENTANA DE TIEMPO
       remainingBankMovements.push(movement);
     }
   });
 
-  // 4. Regresamos las 3 colecciones perfectamente calculadas
   return { matches, remainingInvoices, remainingBankMovements };
 };
+
+/** Aplica los grupos auto-generados sobre las entidades en memoria. */
+export function applyAutoMatchEntities(
+  movements: BankMovement[],
+  invoices: InvoiceXML[],
+  matches: ConciliationGroup[],
+): {
+  movements: BankMovement[];
+  invoices: InvoiceXML[];
+} {
+  const updatedMovements = movements.map((m) => {
+    const group = matches.find((g) => g.bankMovementIds.includes(m.id));
+    if (!group) return m;
+    return {
+      ...m,
+      matchedGroupId: group.id,
+      matchedInvoiceIds: group.invoiceIds,
+      status:
+        group.status === "PARTIAL_MATCH"
+          ? ("PARTIAL" as const)
+          : ("MATCHED" as const),
+    };
+  });
+
+  const updatedInvoices = invoices.map((inv) => {
+    const group = matches.find((g) => g.invoiceIds.includes(inv.id));
+    if (!group) return inv;
+    return {
+      ...inv,
+      matchedGroupId: group.id,
+      matchedMovementIds: group.bankMovementIds,
+      status:
+        group.status === "PARTIAL_MATCH"
+          ? ("PARTIAL" as const)
+          : ("MATCHED" as const),
+    };
+  });
+
+  return { movements: updatedMovements, invoices: updatedInvoices };
+}
+

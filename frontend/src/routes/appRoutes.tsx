@@ -10,6 +10,7 @@ import { SupportPage } from "../pages/SupportPage";
 import RegisterPage from "../features/auth/pages/RegisterPage";
 import { LoginPage } from "../features/auth/pages/LoginPage";
 import { ProtectedRoute } from "../features/auth/components/ProtectedRoute";
+import AuthCallback from "../features/auth/pages/AuthCallback";
 
 export const router = createBrowserRouter([
   {
@@ -31,6 +32,14 @@ export const router = createBrowserRouter([
         <LoginPage />
       </ProtectedRoute>
     ),
+  },
+  {
+    path: "/auth/callback",
+    element: <AuthCallback />,
+  },
+  {
+    path: "/dashboard",
+    element: <Navigate to="/home" replace />,
   },
   {
     path: "/home",

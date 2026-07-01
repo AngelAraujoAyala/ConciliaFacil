@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateConciliationDto } from './dto/create-conciliation.dto';
-import { ConciliationStatus } from '@prisma/client';
+import { ConciliationStatus, Prisma } from '@prisma/client';
 
 @Injectable()
 export class ReconciliationsService {
@@ -33,10 +33,17 @@ export class ReconciliationsService {
           totalInvoices: createConciliationDto.totalInvoices,
           totalBankMovements: createConciliationDto.totalBankMovements,
           matchedCount: createConciliationDto.matchedCount,
+          schemaVersion: createConciliationDto.schemaVersion ?? 2,
           status: createConciliationDto.status as ConciliationStatus,
-          matches: createConciliationDto.matches,
-          remainingInvoices: createConciliationDto.remainingInvoices,
-          remainingBankMovements: createConciliationDto.remainingBankMovements,
+          matches: createConciliationDto.matches as Prisma.InputJsonValue,
+          movements: (createConciliationDto.movements ??
+            []) as Prisma.InputJsonValue,
+          invoices: (createConciliationDto.invoices ??
+            []) as Prisma.InputJsonValue,
+          remainingInvoices:
+            createConciliationDto.remainingInvoices as Prisma.InputJsonValue,
+          remainingBankMovements:
+            createConciliationDto.remainingBankMovements as Prisma.InputJsonValue,
         },
       });
 
@@ -96,10 +103,14 @@ export class ReconciliationsService {
           totalInvoices: dto.totalInvoices,
           totalBankMovements: dto.totalBankMovements,
           matchedCount: dto.matchedCount,
+          schemaVersion: dto.schemaVersion ?? 2,
           status: dto.status as ConciliationStatus,
-          matches: dto.matches,
-          remainingInvoices: dto.remainingInvoices,
-          remainingBankMovements: dto.remainingBankMovements,
+          matches: dto.matches as Prisma.InputJsonValue,
+          movements: (dto.movements ?? []) as Prisma.InputJsonValue,
+          invoices: (dto.invoices ?? []) as Prisma.InputJsonValue,
+          remainingInvoices: dto.remainingInvoices as Prisma.InputJsonValue,
+          remainingBankMovements:
+            dto.remainingBankMovements as Prisma.InputJsonValue,
         },
       });
 
@@ -133,9 +144,9 @@ export class ReconciliationsService {
           totalBankMovements: true,
           matchedCount: true,
           successRate: true,
+          schemaVersion: true,
           createdAt: true,
           updatedAt: true,
-          // matches, remainingInvoices y remainingBankMovements quedan omitidos explícitamente
         },
         orderBy: {
           createdAt: 'desc', // Las más recientes primero

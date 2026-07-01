@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import { useRegisterMutation } from '../hooks/useRegisterMutation';
 
-export default function RegisterForm() {
+// Enfoque Senior: Definimos la interfaz para las props con tipado estricto
+interface RegisterFormProps {
+  onSuccess: (email: string) => void;
+}
+
+export default function RegisterForm({ onSuccess }: RegisterFormProps) {
   const { mutate, isPending, error } = useRegisterMutation();
   const [validationError, setValidationError] = useState<string | null>(null);
 
@@ -31,8 +36,16 @@ export default function RegisterForm() {
       return;
     }
 
-    // Ejecutamos la mutación de TanStack Query
-    mutate({ email, password });
+    // Ejecutamos la mutación de TanStack Query pasándole el callback de éxito
+    mutate(
+      { email, password },
+      {
+        onSuccess: () => {
+          // Si la mutación en Supabase es exitosa, notificamos al contenedor padre
+          onSuccess(email);
+        },
+      }
+    );
   };
 
   return (
