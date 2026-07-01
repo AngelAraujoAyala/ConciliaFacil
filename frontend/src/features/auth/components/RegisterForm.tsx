@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useRegisterMutation } from '../hooks/useRegisterMutation';
+import GoogleButton from './GoogleButton';
 
 // Enfoque Senior: Definimos la interfaz para las props con tipado estricto
 interface RegisterFormProps {
@@ -58,6 +59,8 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
           Automatiza tus conciliaciones bancarias en segundos
         </p>
       </div>
+
+      <GoogleButton />
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Manejo de errores visuales (Tanto locales como del servidor/Supabase) */}

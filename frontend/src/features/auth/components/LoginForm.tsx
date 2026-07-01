@@ -1,5 +1,6 @@
 import React from "react";
 import { useLoginMutation } from "../hooks/useLoginMutation";
+import GoogleButton from "./GoogleButton";
 
 export const LoginForm: React.FC = () => {
   const { mutate, isPending, error } = useLoginMutation();
@@ -25,6 +26,8 @@ export const LoginForm: React.FC = () => {
           Automatiza tus conciliaciones bancarias en segundos
         </p>
       </div>
+
+      <GoogleButton />
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
