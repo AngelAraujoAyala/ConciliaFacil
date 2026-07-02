@@ -22,7 +22,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 export class ReconciliationsController {
   constructor(
     private readonly reconciliationsService: ReconciliationsService,
-  ) {}
+  ) { }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -30,11 +30,17 @@ export class ReconciliationsController {
     @Body() createConciliationDto: CreateConciliationDto,
     @CurrentUser() user: any,
   ) {
-    if (createConciliationDto.userId !== user.id) {
+    // Si el cliente envía un userId diferente, lo bloqueamos de inmediato
+    if (createConciliationDto.userId && createConciliationDto.userId !== user.id) {
       throw new ForbiddenException(
         'No tienes permiso para guardar una conciliación para otro usuario.',
       );
     }
+
+    // 💡 ROBUSTEZ: Aseguramos que el DTO lleve el ID verificado del token 
+    // antes de pasarlo al Service, por si el frontend no lo envió en el JSON body.
+    createConciliationDto.userId = user.id;
+
     return this.reconciliationsService.createBulk(createConciliationDto, user.email);
   }
 
@@ -45,11 +51,15 @@ export class ReconciliationsController {
     @Body() createConciliationDto: CreateConciliationDto,
     @CurrentUser() user: any,
   ) {
-    if (createConciliationDto.userId !== user.id) {
+    if (createConciliationDto.userId && createConciliationDto.userId !== user.id) {
       throw new ForbiddenException(
         'No tienes permiso para modificar una conciliación de otro usuario.',
       );
     }
+
+    // 💡 ROBUSTEZ: Aseguramos la mutación blindada con el ID del token
+    createConciliationDto.userId = user.id;
+
     return this.reconciliationsService.updateOne(
       id,
       createConciliationDto,
