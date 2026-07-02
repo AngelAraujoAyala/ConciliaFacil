@@ -4,6 +4,7 @@ import {
   createJSONStorage,
   type StateStorage,
 } from "zustand/middleware";
+import { resetters } from "./storeReset";
 import { get, set, del } from "idb-keyval";
 import {
   executeReconciliation,
@@ -332,3 +333,6 @@ export const useConciliationStore = create<ConciliationState>()(
     },
   ),
 );
+
+resetters.add(() => useConciliationStore.getState().reset());
+

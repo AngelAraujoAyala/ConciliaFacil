@@ -97,7 +97,7 @@ export default function RegisterPage() {
             </h2>
 
             <p className="text-slate-600 text-sm mb-6 leading-relaxed">
-              Hemos enviado un enlace de activación premium a <br />
+              Hemos enviado un enlace de activación a <br />
               <strong className="text-slate-900 font-semibold">{registeredEmail}</strong>.
             </p>
 
