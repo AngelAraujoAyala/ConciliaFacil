@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { ReconciliationsService } from './reconciliations.service';
 import { CreateConciliationDto } from './dto/create-conciliation.dto';
+import { ClassifyMovementDto } from './dto/classify-movement.dto';
 import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
@@ -92,5 +93,21 @@ export class ReconciliationsController {
       );
     }
     return this.reconciliationsService.findOne(id, userId);
+  }
+
+  @Patch(':id/movements/:movementId/classify')
+  @HttpCode(HttpStatus.OK)
+  classifyMovement(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('movementId') movementId: string,
+    @Body() dto: ClassifyMovementDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.reconciliationsService.classifyMovementManual(
+      id,
+      movementId,
+      dto,
+      user.id,
+    );
   }
 }

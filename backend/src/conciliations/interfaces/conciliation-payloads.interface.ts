@@ -14,6 +14,10 @@ export interface BankMovement {
   retiro: number;
   deposito: number;
   saldo: number;
+  isException?: boolean;
+  exceptionType?: 'TRASPASO' | 'RETIRO_EFECTIVO' | 'COMISION_GLOBAL' | 'MANUAL_MATCH' | null;
+  notes?: string;
+  matchedManualWith?: string[];
 }
 
 /** Grupo M:N persistido en el campo JSONB `matches`. */

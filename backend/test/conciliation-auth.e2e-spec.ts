@@ -45,6 +45,8 @@ class MockSupabaseAuthGuard implements CanActivate {
 }
 
 const mockPrismaService = {
+  $transaction: jest.fn().mockImplementation((cb) => cb(mockPrismaService)),
+  $executeRawUnsafe: jest.fn().mockResolvedValue(true),
   user: {
     upsert: jest.fn().mockImplementation(({ create }) => Promise.resolve(create)),
   },
@@ -86,6 +88,7 @@ describe('Reconciliations Security (e2e)', () => {
   const validPayload = {
     title: 'Auditoría Mensual',
     userId: USER_A_UUID,
+    status: 'DRAFT',
     successRate: 95,
     totalInvoices: 10,
     totalBankMovements: 12,

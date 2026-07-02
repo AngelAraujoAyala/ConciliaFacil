@@ -3,6 +3,7 @@ import { RouterProvider } from "react-router-dom";
 import { router } from "./routes/appRoutes";
 import { useAuthStore } from "./store/authStore";
 import { Toaster } from "sonner";
+import { GlobalModal } from "./components/ui/GlobalModal";
 
 export default function App() {
   const initializeAuth = useAuthStore((state) => state.initializeAuth);
@@ -24,6 +25,7 @@ export default function App() {
   return (
     <>
       <Toaster richColors position="top-right" closeButton />
+      <GlobalModal />
       <RouterProvider router={router} />
     </>
   );

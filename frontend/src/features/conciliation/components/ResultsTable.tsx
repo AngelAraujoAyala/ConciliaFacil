@@ -1,6 +1,7 @@
 // src/features/conciliation/components/ResultsTable.tsx
 import { useState, useMemo } from "react";
 import { useConciliationStore } from "../../../store/useConciliationStore";
+import { useModalStore } from "../../../store/modalStore";
 import FileDropzone from "./FileDropzone";
 import { extractInvoicesXml } from "../utils/extractInvoicesXml";
 import { useCreateConciliation } from "../hooks/useCreateConciliation";
@@ -13,13 +14,15 @@ import {
   getConciliatedGroups,
   computeSuccessRate,
   countFullyConciliatedMovements,
+  classifyMovements,
 } from "../utils/bankMovementMetrics";
 
 import SummaryCards from "./SummaryCards";
 import GroupsTable from "./GroupsTable";
 import ManualMatchPanel from "./ManualMatchPanel";
+import ExceptionPanel from "./ExceptionPanel";
 
-type TabType = "ALL" | "MATCHED" | "ISSUES" | "MANUAL";
+type TabType = "ALL" | "MATCHED" | "ISSUES" | "MANUAL" | "EXCEPTIONS";
 
 export default function ResultsTable() {
   const user = useAuthStore((state) => state.user);
@@ -32,7 +35,7 @@ export default function ResultsTable() {
     remainingBankMovements,
     activeConciliationId,
     activeConciliationTitle,
-    reset,
+    rerunConciliation,
     addIncrementalInvoices,
     approveGroupDiscrepancy,
     unmatchGroup,
@@ -53,11 +56,12 @@ export default function ResultsTable() {
 
   const { mutate, isPending: isSaving } = useCreateConciliation();
 
+  const classifiedMovements = useMemo(
+    () => classifyMovements(movements, matches),
+    [movements, matches],
+  );
+
   const summary = useMemo(() => {
-    const cleanRemainingBank = dedupeRemainingBankMovements(
-      matches,
-      remainingBankMovements,
-    );
     const totalBankMovements = countUniqueBankMovements(movements);
     const totalInvoices = countUniqueInvoices(invoices);
     const fullyConciliated = countFullyConciliatedMovements(matches);
@@ -69,10 +73,11 @@ export default function ResultsTable() {
       totalBankMovements,
       totalInvoices,
       fullyConciliated,
-      unreconciledBank: cleanRemainingBank.length,
+      unreconciledBank: classifiedMovements.pendingReal.length,
       reviewNeeded,
       unreconciledInvoices: remainingInvoices.length,
-      successRate: computeSuccessRate(matches, totalBankMovements),
+      // successRate ahora incluye excepciones como movimientos resueltos
+      successRate: computeSuccessRate(matches, totalBankMovements, movements),
     };
   }, [
     matches,
@@ -80,6 +85,7 @@ export default function ResultsTable() {
     invoices,
     remainingInvoices,
     remainingBankMovements,
+    classifiedMovements,
   ]);
 
   const hasSessionData =
@@ -182,6 +188,17 @@ export default function ResultsTable() {
             Alertas ({summary.reviewNeeded})
           </button>
           <button
+            onClick={() => setActiveTab("EXCEPTIONS")}
+            className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all flex items-center gap-1.5 ${activeTab === "EXCEPTIONS" ? "border-b-2 border-rose-500 text-rose-600 font-bold bg-rose-50/20" : "text-gray-500"}`}
+          >
+            🛡️ Excepciones
+            {classifiedMovements.pendingReal.length > 0 && (
+              <span className="text-[10px] font-bold bg-red-500 text-white rounded-full px-1.5 py-0.5 leading-none">
+                {classifiedMovements.pendingReal.length}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => setActiveTab("MANUAL")}
             className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all ${activeTab === "MANUAL" ? "border-b-2 border-indigo-500 text-indigo-600 font-bold bg-indigo-50/20" : "text-gray-500"}`}
           >
@@ -192,13 +209,14 @@ export default function ResultsTable() {
         <div className="flex flex-wrap items-center gap-2 self-end lg:self-auto w-full sm:w-auto justify-end">
           <button
             onClick={() => {
-              if (
-                confirm(
-                  "¿Seguro que deseas limpiar la sesión actual? Se borrarán todos los cruces actuales.",
-                )
-              ) {
-                reset();
-              }
+              useModalStore.getState().showConfirm({
+                title: "Reiniciar Conciliación",
+                message: "¿Seguro que deseas reiniciar la conciliación? Se volverá a ejecutar el motor de cruce automático y se limpiarán los ajustes manuales y excepciones, pero NO perderás los archivos cargados.",
+                type: "danger",
+                onConfirm: () => {
+                  rerunConciliation();
+                },
+              });
             }}
             className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-3 py-2 rounded-xl transition-colors cursor-pointer"
           >
@@ -223,9 +241,15 @@ export default function ResultsTable() {
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden p-4">
         {activeTab === "MANUAL" ? (
           <ManualMatchPanel />
+        ) : activeTab === "EXCEPTIONS" ? (
+          <ExceptionPanel
+            pendingMovements={classifiedMovements.pendingReal}
+            exceptionMovements={classifiedMovements.exceptions}
+            conciliationId={activeConciliationId}
+          />
         ) : (
           <GroupsTable
             groups={matches}
@@ -324,11 +348,10 @@ export default function ResultsTable() {
                 type="button"
                 onClick={handleConfirmSave}
                 disabled={!conciliationTitle.trim() || isSaving}
-                className={`px-4 py-2 text-xs font-bold text-white rounded-xl shadow-xs transition-all cursor-pointer ${
-                  selectedStatus === "COMPLETED"
-                    ? "bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300"
-                    : "bg-amber-600 hover:bg-amber-700 disabled:bg-gray-300"
-                }`}
+                className={`px-4 py-2 text-xs font-bold text-white rounded-xl shadow-xs transition-all cursor-pointer ${selectedStatus === "COMPLETED"
+                  ? "bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300"
+                  : "bg-amber-600 hover:bg-amber-700 disabled:bg-gray-300"
+                  }`}
               >
                 {isSaving ? "Guardando..." : "Confirmar y Guardar"}
               </button>

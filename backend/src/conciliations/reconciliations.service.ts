@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateConciliationDto } from './dto/create-conciliation.dto';
+import { ClassifyMovementDto } from './dto/classify-movement.dto';
 import { ConciliationStatus, Prisma } from '@prisma/client';
 
 @Injectable()
@@ -192,6 +193,193 @@ export class ReconciliationsService {
       console.error('Error al obtener detalle de conciliación con RLS:', error);
       throw new InternalServerErrorException(
         'Error al recuperar el detalle de la conciliación.',
+      );
+    }
+  }
+
+  async classifyMovementManual(
+    conciliationId: string,
+    movementId: string,
+    dto: ClassifyMovementDto,
+    userId: string,
+  ) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        // 1. Establecer el contexto RLS
+        await this.setAuthContext(tx, userId);
+
+        // 2. Obtener la conciliación existente
+        const conciliation = await tx.conciliation.findFirst({
+          where: { id: conciliationId, userId },
+        });
+
+        if (!conciliation) {
+          throw new NotFoundException(
+            `No se encontró la conciliación con ID: ${conciliationId} para este usuario.`,
+          );
+        }
+
+        // 3. Parsear JSONs
+        const movements = (conciliation.movements as any[]) || [];
+        const matches = (conciliation.matches as any[]) || [];
+        const invoices = (conciliation.invoices as any[]) || [];
+        const remainingInvoices = (conciliation.remainingInvoices as any[]) || [];
+        const remainingBankMovements = (conciliation.remainingBankMovements as any[]) || [];
+
+        // 4. Buscar el movimiento bancario
+        const movementIndex = movements.findIndex((m) => m.id === movementId);
+        if (movementIndex === -1) {
+          throw new NotFoundException(
+            `No se encontró el movimiento bancario con ID: ${movementId} en esta conciliación.`,
+          );
+        }
+
+        const movement = { ...movements[movementIndex] };
+
+        // 5. Aplicar la clasificación
+        movement.isException = dto.isException;
+        movement.exceptionType = dto.exceptionType || null;
+        movement.notes = dto.notes || '';
+        movement.matchedManualWith = dto.matchedManualWith || [];
+
+        // Si es MANUAL_MATCH y tiene facturas asociadas, creamos el grupo si no existiera
+        if (dto.exceptionType === 'MANUAL_MATCH' && dto.matchedManualWith && dto.matchedManualWith.length > 0) {
+          // Remover de remainingBankMovements
+          const remMovIndex = remainingBankMovements.findIndex((m) => m.id === movementId);
+          if (remMovIndex !== -1) {
+            remainingBankMovements.splice(remMovIndex, 1);
+          }
+
+          // Generar un nuevo grupo
+          const bankTotal = movement.retiro || movement.deposito || 0;
+          let invoiceTotal = 0;
+
+          dto.matchedManualWith.forEach((invId) => {
+            // Actualizar estatus de las facturas en invoices y remover de remainingInvoices
+            const invIndex = invoices.findIndex((i) => i.id === invId);
+            if (invIndex !== -1) {
+              invoices[invIndex].status = 'MATCHED';
+              invoices[invIndex].matchedMovementIds = Array.from(
+                new Set([...(invoices[invIndex].matchedMovementIds || []), movementId])
+              );
+            }
+            const remInvIndex = remainingInvoices.findIndex((i) => i.id === invId);
+            if (remInvIndex !== -1) {
+              invoiceTotal += remainingInvoices[remInvIndex].total || 0;
+              remainingInvoices.splice(remInvIndex, 1);
+            }
+          });
+
+          // Buscar si ya existe un grupo manual para este movimiento y actualizarlo, o crear uno nuevo
+          const existingGroupIndex = matches.findIndex(
+            (g) => g.bankMovementIds.includes(movementId) && g.source === 'MANUAL'
+          );
+
+          const newGroup = {
+            id: existingGroupIndex !== -1 ? matches[existingGroupIndex].id : `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            bankMovementIds: [movementId],
+            invoiceIds: dto.matchedManualWith,
+            status: 'MANUAL_MATCH',
+            source: 'MANUAL',
+            observations: dto.notes,
+            bankTotal,
+            invoiceTotal,
+            amountDelta: bankTotal - invoiceTotal,
+            createdAt: new Date().toISOString(),
+          };
+
+          if (existingGroupIndex !== -1) {
+            matches[existingGroupIndex] = newGroup;
+          } else {
+            matches.push(newGroup);
+          }
+
+          movement.matchedGroupId = newGroup.id;
+          movement.status = 'MATCHED';
+          movement.matchedInvoiceIds = dto.matchedManualWith;
+        } else {
+          // Si no es MANUAL_MATCH (ej: TRASPASO, RETIRO_EFECTIVO, etc)
+          // Si tenía un grupo manual previo, lo removemos
+          const existingGroupIndex = matches.findIndex(
+            (g) => g.bankMovementIds.includes(movementId) && g.source === 'MANUAL'
+          );
+          if (existingGroupIndex !== -1) {
+            const removedGroup = matches.splice(existingGroupIndex, 1)[0];
+            // Restaurar facturas asociadas a ese grupo a remainingInvoices
+            removedGroup.invoiceIds.forEach((invId) => {
+              const invIndex = invoices.findIndex((i) => i.id === invId);
+              if (invIndex !== -1) {
+                invoices[invIndex].status = 'UNMATCHED';
+                invoices[invIndex].matchedMovementIds = (invoices[invIndex].matchedMovementIds || []).filter(
+                  (id: string) => id !== movementId
+                );
+                // Si no está ya en remainingInvoices, agregarla
+                if (!remainingInvoices.some((i) => i.id === invId)) {
+                  remainingInvoices.push(invoices[invIndex]);
+                }
+              }
+            });
+          }
+
+          // Si es excepción, quitamos del matchedGroupId / matchedInvoiceIds
+          movement.matchedGroupId = undefined;
+          movement.matchedInvoiceIds = [];
+          movement.status = dto.isException ? 'MATCHED' : 'UNMATCHED'; // Excepciones se consideran "resueltas"
+
+          if (dto.isException) {
+            // Remover de remainingBankMovements ya que está exceptuado (resuelto)
+            const remMovIndex = remainingBankMovements.findIndex((m) => m.id === movementId);
+            if (remMovIndex !== -1) {
+              remainingBankMovements.splice(remMovIndex, 1);
+            }
+          } else {
+            // Si le quitó la excepción, vuelve a remainingBankMovements
+            if (!remainingBankMovements.some((m) => m.id === movementId)) {
+              remainingBankMovements.push(movement);
+            }
+          }
+        }
+
+        movements[movementIndex] = movement;
+
+        // 6. Recalcular métricas
+        const totalBankMovements = movements.length;
+
+        // Movimientos resueltos (conciliados + excepciones)
+        const conciliatedBankMovementIds = new Set<string>();
+        matches
+          .filter((g) => g.status === 'TOTAL_MATCH' || g.status === 'MANUAL_MATCH')
+          .forEach((g) => g.bankMovementIds.forEach((id: string) => conciliatedBankMovementIds.add(id)));
+
+        const resolvedCount = movements.filter(
+          (m) => m.isException || conciliatedBankMovementIds.has(m.id)
+        ).length;
+
+        const successRate = totalBankMovements > 0
+          ? Math.round((resolvedCount / totalBankMovements) * 100)
+          : 0;
+
+        // 7. Guardar en Base de Datos
+        const updated = await tx.conciliation.update({
+          where: { id: conciliationId },
+          data: {
+            movements: movements as any,
+            matches: matches as any,
+            invoices: invoices as any,
+            remainingInvoices: remainingInvoices as any,
+            remainingBankMovements: remainingBankMovements as any,
+            matchedCount: resolvedCount,
+            successRate,
+          },
+        });
+
+        return updated;
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      console.error('Error al clasificar movimiento:', error);
+      throw new InternalServerErrorException(
+        'No se pudo clasificar el movimiento en la base de datos.',
       );
     }
   }

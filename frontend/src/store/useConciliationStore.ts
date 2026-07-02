@@ -17,7 +17,7 @@ import {
   createConciliationGroup,
   removeGroupFromState,
 } from "../features/conciliation/utils/conciliationGroupOps";
-import type { BankMovement, InvoiceXML, ConciliationGroup } from "../types";
+import type { BankMovement, InvoiceXML, ConciliationGroup, ExceptionType } from "../types";
 
 const indexedDBStorage: StateStorage = {
   getItem: async (name: string): Promise<string | null> => {
@@ -70,6 +70,18 @@ interface ConciliationState {
   createMatchGroup: () => { success: boolean; error?: string };
   unmatchGroup: (groupId: string) => void;
   approveGroupDiscrepancy: (groupId: string) => void;
+
+  /** Clasifica un movimiento bancario como excepción (o la remueve) directamente en el estado local.
+   *  Usado en la sesión activa antes de persistir en el backend. */
+  classifyMovement: (params: {
+    movementId: string;
+    isException: boolean;
+    exceptionType?: ExceptionType;
+    notes?: string;
+  }) => void;
+
+  /** Restablece el motor local limpiando todos los cruces y excepciones para volver a ejecutar el cruce automático */
+  rerunConciliation: () => void;
 
   reset: () => void;
   loadSnapshot: (snapshot: ConciliationSnapshot) => void;
@@ -286,6 +298,78 @@ export const useConciliationStore = create<ConciliationState>()(
       approveGroupDiscrepancy: (groupId) => {
         const state = get();
         set(approveGroupInState(state, groupId));
+      },
+
+      classifyMovement: ({ movementId, isException, exceptionType = null, notes = '' }) => {
+        const { movements, remainingBankMovements } = get();
+
+        const updatedMovements = movements.map((m) => {
+          if (m.id !== movementId) return m;
+          return {
+            ...m,
+            isException,
+            exceptionType: isException ? exceptionType : null,
+            notes: isException ? notes : '',
+            // Si se remueve la excepción, limpiamos el estatus para que vuelva a UNMATCHED
+            status: (isException ? m.status : 'UNMATCHED') as BankMovement['status'],
+          };
+        });
+
+        // Sincronizar remainingBankMovements
+        let updatedRemaining = [...remainingBankMovements];
+        if (isException) {
+          // Al ser excepcionado, sale de los "pendientes" del panel de banco
+          updatedRemaining = updatedRemaining.filter((m) => m.id !== movementId);
+        } else {
+          // Al quitar la excepción, vuelve a remaining si no estaba ya
+          const movement = updatedMovements.find((m) => m.id === movementId);
+          if (movement && !updatedRemaining.some((m) => m.id === movementId)) {
+            updatedRemaining.push(movement);
+          }
+        }
+
+        set({
+          movements: updatedMovements,
+          remainingBankMovements: updatedRemaining,
+        });
+      },
+
+      rerunConciliation: () => {
+        const { movements, invoices } = get();
+
+        // 1. Restablecer todos los movimientos a su estado original (no conciliados ni exceptuados)
+        const resetMovements = movements.map((m) => ({
+          ...m,
+          matchedInvoiceIds: [] as string[],
+          status: "UNMATCHED" as const,
+          matchedGroupId: undefined,
+          isException: false,
+          exceptionType: null as any,
+          notes: "",
+          matchedManualWith: [] as string[],
+        }));
+
+        // 2. Restablecer todas las facturas a su estado original (no conciliadas)
+        const resetInvoices = invoices.map((inv) => ({
+          ...inv,
+          matchedMovementIds: [] as string[],
+          status: "UNMATCHED" as const,
+          matchedGroupId: undefined,
+        }));
+
+        // 3. Actualizar estado local a valores base
+        set({
+          movements: resetMovements,
+          invoices: resetInvoices,
+          matches: [],
+          remainingInvoices: resetInvoices,
+          remainingBankMovements: resetMovements,
+          selectedBankMovementIds: [],
+          selectedInvoiceIds: [],
+        });
+
+        // 4. Volver a ejecutar el algoritmo de cruce automático
+        get().runConciliation();
       },
 
       reset: () => set({ ...INITIAL_STATE }),

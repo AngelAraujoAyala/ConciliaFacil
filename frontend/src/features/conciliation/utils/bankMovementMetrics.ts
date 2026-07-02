@@ -60,9 +60,46 @@ export function countFullyConciliatedMovements(
 export function computeSuccessRate(
   matches: ConciliationGroup[],
   totalBankMovements: number,
+  movements?: BankMovement[],
 ): number {
   if (totalBankMovements === 0) return 0;
-  return Math.round(
-    (countFullyConciliatedMovements(matches) / totalBankMovements) * 100,
-  );
+  const conciliatedIds = new Set<string>();
+  matches
+    .filter((g) => g.status === "TOTAL_MATCH" || g.status === "MANUAL_MATCH")
+    .forEach((g) => g.bankMovementIds.forEach((id) => conciliatedIds.add(id)));
+
+  // Excepciones (TRASPASO, RETIRO_EFECTIVO, COMISION_GLOBAL) también cuentan como resueltas
+  const exceptionCount = movements
+    ? movements.filter((m) => m.isException && m.exceptionType !== "MANUAL_MATCH").length
+    : 0;
+
+  const resolvedCount = conciliatedIds.size + exceptionCount;
+  return Math.round((resolvedCount / totalBankMovements) * 100);
+}
+
+/** Separa los movimientos en sus tres categorías para filtrado en la UI */
+export function classifyMovements(
+  movements: BankMovement[],
+  matches: ConciliationGroup[],
+) {
+  const conciliatedIds = new Set<string>();
+  matches
+    .filter((g) => g.status === "TOTAL_MATCH" || g.status === "MANUAL_MATCH")
+    .forEach((g) => g.bankMovementIds.forEach((id) => conciliatedIds.add(id)));
+
+  const pendingReal: BankMovement[] = [];
+  const exceptions: BankMovement[] = [];
+  const conciliated: BankMovement[] = [];
+
+  for (const m of movements) {
+    if (conciliatedIds.has(m.id)) {
+      conciliated.push(m);
+    } else if (m.isException) {
+      exceptions.push(m);
+    } else {
+      pendingReal.push(m);
+    }
+  }
+
+  return { pendingReal, exceptions, conciliated };
 }

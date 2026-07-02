@@ -45,13 +45,24 @@ export const MetricsGrid: React.FC = () => {
       : draft.movements) as BankMovement[] | undefined;
 
     if (Array.isArray(movs)) {
-      movs.forEach((m) => {
-        const amount = m.amount || 0;
-        montoTotal += amount;
-        if (m.status === "MATCHED" || (m.matchedInvoiceIds && m.matchedInvoiceIds.length > 0)) {
-          montoCuadrado += amount;
-        }
-      });
+      const totals = movs.reduce(
+        (acc, m) => {
+          const amount = m.amount || 0;
+          const isResolved =
+            m.status === "MATCHED" ||
+            !!m.isException ||
+            (m.matchedInvoiceIds && m.matchedInvoiceIds.length > 0);
+
+          return {
+            total: acc.total + amount,
+            squared: acc.squared + (isResolved ? amount : 0),
+          };
+        },
+        { total: 0, squared: 0 }
+      );
+
+      montoTotal += totals.total;
+      montoCuadrado += totals.squared;
     }
   });
 

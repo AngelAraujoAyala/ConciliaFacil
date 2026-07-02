@@ -1,5 +1,14 @@
 export type MatchStatus = "MATCHED" | "PARTIAL" | "UNMATCHED";
 export type MovementType = "INGRESO" | "EGRESO";
+
+/** Tipos canónicos de excepción para movimientos sin factura directa */
+export type ExceptionType =
+  | "TRASPASO"
+  | "RETIRO_EFECTIVO"
+  | "COMISION_GLOBAL"
+  | "MANUAL_MATCH"
+  | null;
+
 export interface BankMovement {
   id: string;
   date: string;
@@ -9,6 +18,11 @@ export interface BankMovement {
   status: MatchStatus;
   matchedInvoiceIds: string[];
   matchedGroupId?: string;
+  // --- Campos del sistema de Excepciones y Clasificación Manual ---
+  isException?: boolean;
+  exceptionType?: ExceptionType;
+  notes?: string;
+  matchedManualWith?: string[];
 }
 
 export interface InvoiceXML {
