@@ -1,8 +1,10 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useConciliationStore } from "../../../store/useConciliationStore";
 import type { ConciliationDetail } from "../../conciliation/types/history.types";
 import { getConciliatedGroups } from "../../conciliation/utils/bankMovementMetrics";
+import { exportConciliationToExcel } from "../../conciliation/utils/excelExport";
+import { toast } from "sonner";
 
 interface HistoryDetailPanelProps {
   selectedId: string | null;
@@ -17,6 +19,27 @@ export const HistoryDetailPanel: React.FC<HistoryDetailPanelProps> = ({
 }) => {
   const navigate = useNavigate();
   const loadSnapshot = useConciliationStore((state) => state.loadSnapshot);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    if (!detail) return;
+    try {
+      setIsExporting(true);
+      await exportConciliationToExcel(detail);
+      toast.success("Exportación completada", {
+        description: `El archivo “${detail.title}.xlsx” se ha descargado correctamente.`,
+        duration: 4000,
+      });
+    } catch (error) {
+      console.error("Error al exportar:", error);
+      toast.error("Error al exportar", {
+        description: "No se pudo generar el archivo Excel. Intenta de nuevo.",
+        duration: 5000,
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const handleResume = () => {
     if (!detail) return;
@@ -159,23 +182,36 @@ export const HistoryDetailPanel: React.FC<HistoryDetailPanelProps> = ({
 
       <div className="pt-2">
         <button
-          onClick={() => console.log("Exportar reporte para:", detail.id)}
-          className="w-full inline-flex items-center justify-center px-4 py-2 border border-slate-300 shadow-sm text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 transition-colors"
+          onClick={handleExport}
+          disabled={isExporting}
+          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 border border-slate-300 shadow-sm text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
-          <svg
-            className="w-4 h-4 mr-2 text-slate-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-            />
-          </svg>
-          Exportar Auditoría (.XLSX)
+          {isExporting ? (
+            <>
+              <svg className="w-4 h-4 animate-spin text-indigo-600" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              Generando Excel...
+            </>
+          ) : (
+            <>
+              <svg
+                className="w-4 h-4 text-slate-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              Exportar Audiítoría (.XLSX)
+            </>
+          )}
         </button>
       </div>
     </div>
