@@ -7,11 +7,88 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateConciliationDto } from './dto/create-conciliation.dto';
 import { ClassifyMovementDto } from './dto/classify-movement.dto';
-import { ConciliationStatus, Prisma } from '@prisma/client';
+import { ConciliationStatus, Prisma, UserPlan } from '@prisma/client';
 
 @Injectable()
 export class ReconciliationsService {
   constructor(private readonly prisma: PrismaService) { }
+
+  /**
+   * Valida si el usuario puede registrar o reutilizar un RFC de empresa según su plan y cuotas.
+   * Realiza un "lazy reset" del contador de conciliaciones mensuales si ha pasado la fecha de reinicio.
+   */
+  async validarLimitesDePlan(
+    userId: string,
+    rfcEmpresa?: string | null,
+    tx?: Prisma.TransactionClient,
+  ): Promise<{ esRfcNuevo: boolean; empresaId?: string }> {
+    const prismaClient = tx || this.prisma;
+    const user = await prismaClient.user.findUnique({
+      where: { id: userId },
+      include: { empresas: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado.');
+    }
+
+    const now = new Date();
+    if (now >= user.nextResetDate) {
+      const nextReset = new Date(user.nextResetDate);
+      while (now >= nextReset) {
+        nextReset.setMonth(nextReset.getMonth() + 1);
+      }
+
+      await prismaClient.user.update({
+        where: { id: userId },
+        data: {
+          monthlyConciliations: 0,
+          nextResetDate: nextReset,
+        },
+      });
+
+      user.monthlyConciliations = 0;
+      user.nextResetDate = nextReset;
+    }
+
+    let esRfcNuevo = false;
+    let empresaId: string | undefined = undefined;
+
+    if (rfcEmpresa) {
+      const normalizedRfc = rfcEmpresa.trim().toUpperCase();
+      const empresaExistente = user.empresas.find(
+        (empresa) => empresa.rfc.toUpperCase() === normalizedRfc,
+      );
+
+      if (empresaExistente) {
+        empresaId = empresaExistente.id;
+      } else {
+        esRfcNuevo = true;
+        const empresasRegistradas = user.empresas.length;
+
+        if (user.plan === UserPlan.FREE && empresasRegistradas >= 1) {
+          throw new ForbiddenException(
+            'Tu plan actual solo permite gestionar 1 RFC. Actualiza tu plan para registrar nuevos clientes.',
+          );
+        }
+
+        if (user.plan === UserPlan.BASIC && empresasRegistradas >= 5) {
+          throw new ForbiddenException(
+            'Has alcanzado el límite de 5 RFCs de tu plan Básico. Actualiza a Plan Pro para gestionar más clientes.',
+          );
+        }
+      }
+    }
+
+    if (user.plan === UserPlan.FREE && user.monthlyConciliations >= 3) {
+      throw new ForbiddenException(
+        'Has alcanzado el límite de 3 conciliaciones mensuales de tu plan gratuito. El contador se reiniciará el ' +
+          user.nextResetDate.toLocaleDateString(),
+      );
+    }
+
+    return { esRfcNuevo, empresaId };
+  }
 
   /**
    * Helper para inyectar el contexto de usuario en la transacción de Postgres.
@@ -40,11 +117,51 @@ export class ReconciliationsService {
           },
         });
 
-        // 3. Crear la conciliación (validada por RLS mediante WITH CHECK)
+        // 3. Validar límites del plan (Lazy Reset + RFCs + Conciliaciones mensuales)
+        const validation = await this.validarLimitesDePlan(
+          createConciliationDto.userId,
+          createConciliationDto.rfcEmpresa,
+          tx,
+        );
+
+        let empresaId = validation.empresaId;
+
+        // 4. Crear nueva empresa si es RFC nuevo
+        if (validation.esRfcNuevo && createConciliationDto.rfcEmpresa) {
+          const rfcEmpresa = createConciliationDto.rfcEmpresa;
+          let razonSocial = `Empresa ${rfcEmpresa}`;
+
+          if (createConciliationDto.invoices && Array.isArray(createConciliationDto.invoices)) {
+            const matchedInv = createConciliationDto.invoices.find(
+              (inv: any) =>
+                inv.rfcEmisor?.toUpperCase() === rfcEmpresa.toUpperCase() ||
+                inv.rfcReceptor?.toUpperCase() === rfcEmpresa.toUpperCase(),
+            ) as any;
+            if (matchedInv) {
+              razonSocial =
+                matchedInv.rfcEmisor?.toUpperCase() === rfcEmpresa.toUpperCase()
+                  ? matchedInv.nameEmisor
+                  : matchedInv.nameReceptor;
+            }
+          }
+
+          const nuevaEmpresa = await tx.empresa.create({
+            data: {
+              rfc: rfcEmpresa.trim().toUpperCase(),
+              razonSocial: razonSocial || `Empresa ${rfcEmpresa}`,
+              userId: createConciliationDto.userId,
+            },
+          });
+          empresaId = nuevaEmpresa.id;
+        }
+
+        // 5. Crear la conciliación
         const newConciliation = await tx.conciliation.create({
           data: {
             title: createConciliationDto.title,
             userId: createConciliationDto.userId,
+            rfcEmpresa: createConciliationDto.rfcEmpresa ?? null,
+            empresaId: empresaId || null,
             successRate: createConciliationDto.successRate,
             totalInvoices: createConciliationDto.totalInvoices,
             totalBankMovements: createConciliationDto.totalBankMovements,
@@ -59,6 +176,16 @@ export class ReconciliationsService {
           },
         });
 
+        // 6. Incrementar contador de conciliaciones mensuales
+        await tx.user.update({
+          where: { id: createConciliationDto.userId },
+          data: {
+            monthlyConciliations: {
+              increment: 1,
+            },
+          },
+        });
+
         return {
           success: true,
           message: 'La sesión de conciliación ha sido guardada en el histórico exitosamente.',
@@ -66,6 +193,9 @@ export class ReconciliationsService {
         };
       });
     } catch (error) {
+      if (error instanceof ForbiddenException || error instanceof NotFoundException) {
+        throw error;
+      }
       console.error('Error al guardar conciliación JSONB con RLS:', error);
       throw new InternalServerErrorException(
         'No se pudo guardar la sesión de conciliación en la base de datos.',
@@ -106,6 +236,7 @@ export class ReconciliationsService {
           where: { id },
           data: {
             title: dto.title,
+            rfcEmpresa: dto.rfcEmpresa ?? null,
             successRate: dto.successRate,
             totalInvoices: dto.totalInvoices,
             totalBankMovements: dto.totalBankMovements,

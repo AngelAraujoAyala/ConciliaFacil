@@ -7,13 +7,14 @@ export default function InvoiceUploadStep() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Enlazamos al store global
   const invoices = useConciliationStore((state) => state.invoices);
+  const hasMixedRfcsError = useConciliationStore((state) => state.hasMixedRfcsError);
+  const rfcEmpresaActual = useConciliationStore((state) => state.rfcEmpresaActual);
+  const processInvoiceUpload = useConciliationStore((state) => state.processInvoiceUpload);
+  const clearMixedRfcsError = useConciliationStore((state) => state.clearMixedRfcsError);
   const setInvoices = useConciliationStore((state) => state.setInvoices);
   const setCurrentStep = useConciliationStore((state) => state.setCurrentStep);
-  const runConciliation = useConciliationStore(
-    (state) => state.runConciliation,
-  );
+  const runConciliation = useConciliationStore((state) => state.runConciliation);
 
   const handleInvoiceFilesSelected = async (files: File[]) => {
     if (files.length === 0) return;
@@ -21,16 +22,15 @@ export default function InvoiceUploadStep() {
     try {
       setIsLoading(true);
       setError(null);
-      const parsedInvoices = await extractInvoicesXml(files);
+      clearMixedRfcsError();
 
-      if (parsedInvoices.length === 0) {
-        throw new Error(
-          "No se encontraron facturas XML válidas o timbradas en la selección.",
-        );
+      const extraction = await extractInvoicesXml(files);
+      const result = processInvoiceUpload(extraction, { append: invoices.length > 0 });
+
+      if (!result.success) {
+        setError(result.error ?? "Error al procesar los archivos XML.");
+        return;
       }
-
-      // Acumulamos las facturas usando los datos del store global
-      setInvoices([...invoices, ...parsedInvoices]);
     } catch (err) {
       setError(
         err instanceof Error
@@ -66,6 +66,24 @@ export default function InvoiceUploadStep() {
         </div>
       )}
 
+      {hasMixedRfcsError && (
+        <div className="bg-amber-50 border border-amber-300 text-amber-900 px-4 py-3 rounded-xl text-sm flex justify-between items-start gap-3">
+          <div>
+            <p className="font-semibold">RFCs mixtos detectados</p>
+            <p className="mt-1">
+              El lote contiene facturas de empresas distintas. Carga únicamente XMLs
+              del mismo contribuyente para continuar con la conciliación.
+            </p>
+          </div>
+          <button
+            onClick={clearMixedRfcsError}
+            className="text-xs font-bold underline shrink-0"
+          >
+            Cerrar
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex justify-between items-center">
           <span>{error}</span>
@@ -81,9 +99,19 @@ export default function InvoiceUploadStep() {
       {invoices.length > 0 && !isLoading && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-700">
-              Facturas Listas ({invoices.length})
-            </h2>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-700">
+                Facturas Listas ({invoices.length})
+              </h2>
+              {rfcEmpresaActual && (
+                <p className="text-xs text-gray-500 mt-0.5">
+                  RFC empresa detectado:{" "}
+                  <span className="font-mono font-medium text-gray-700">
+                    {rfcEmpresaActual}
+                  </span>
+                </p>
+              )}
+            </div>
             <button
               onClick={() => setInvoices([])}
               className="text-xs text-red-500 hover:underline"
@@ -129,7 +157,8 @@ export default function InvoiceUploadStep() {
 
             <button
               onClick={runConciliation}
-              className="bg-emerald-600 text-white px-8 py-2.5 rounded-xl font-bold shadow-md hover:bg-emerald-700 transition-colors"
+              disabled={hasMixedRfcsError}
+              className="bg-emerald-600 text-white px-8 py-2.5 rounded-xl font-bold shadow-md hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               ⚡ Ejecutar Conciliación Inteligente
             </button>

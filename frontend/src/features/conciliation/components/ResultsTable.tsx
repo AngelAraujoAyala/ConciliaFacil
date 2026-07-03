@@ -35,8 +35,11 @@ export default function ResultsTable() {
     remainingBankMovements,
     activeConciliationId,
     activeConciliationTitle,
+    rfcEmpresaActual,
+    hasMixedRfcsError,
     rerunConciliation,
-    addIncrementalInvoices,
+    processInvoiceUpload,
+    clearMixedRfcsError,
     approveGroupDiscrepancy,
     unmatchGroup,
   } = useConciliationStore();
@@ -120,6 +123,7 @@ export default function ResultsTable() {
       title: conciliationTitle.trim(),
       status: selectedStatus,
       userId: user.id,
+      rfcEmpresa: rfcEmpresaActual ?? "",
       successRate: summary.successRate,
       schemaVersion: 2,
       totalInvoices: countUniqueInvoices(invoices),
@@ -141,11 +145,20 @@ export default function ResultsTable() {
     try {
       setIsAddingInvoices(true);
       setDropzoneFeedback(null);
-      const parsedInvoices = await extractInvoicesXml(files);
-      if (parsedInvoices.length === 0)
-        throw new Error("No se encontraron XMLs válidos.");
+      clearMixedRfcsError();
 
-      const { addedCount } = addIncrementalInvoices(parsedInvoices);
+      const extraction = await extractInvoicesXml(files);
+      const result = processInvoiceUpload(extraction, { append: true });
+
+      if (!result.success) {
+        setDropzoneFeedback({
+          msg: result.error ?? "Error al procesar XMLs.",
+          type: "error",
+        });
+        return;
+      }
+
+      const addedCount = result.addedCount ?? 0;
       setDropzoneFeedback({
         msg:
           addedCount > 0

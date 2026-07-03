@@ -1,5 +1,74 @@
 import type { InvoiceXML } from "../../../types";
 
+export interface ExtractInvoicesXmlResult {
+  invoices: InvoiceXML[];
+  rfcEmpresaDetectado: string | null;
+  hasMixedRfcs: boolean;
+}
+
+interface RfcAnalysis {
+  rfcEmpresaDetectado: string | null;
+  hasMixedRfcs: boolean;
+}
+
+/**
+ * Cuenta frecuencias de RFC emisor/receptor para deducir el RFC del cliente
+ * y valida que todas las facturas pertenezcan al mismo contribuyente.
+ */
+function analizarYValidarRfcs(invoices: InvoiceXML[]): RfcAnalysis {
+  if (invoices.length === 0) {
+    return { rfcEmpresaDetectado: null, hasMixedRfcs: false };
+  }
+
+  const frequency = new Map<string, number>();
+  const receptorFrequency = new Map<string, number>();
+
+  for (const invoice of invoices) {
+    if (invoice.rfcEmisor) {
+      frequency.set(invoice.rfcEmisor, (frequency.get(invoice.rfcEmisor) ?? 0) + 1);
+    }
+    if (invoice.rfcReceptor) {
+      frequency.set(
+        invoice.rfcReceptor,
+        (frequency.get(invoice.rfcReceptor) ?? 0) + 1,
+      );
+      receptorFrequency.set(
+        invoice.rfcReceptor,
+        (receptorFrequency.get(invoice.rfcReceptor) ?? 0) + 1,
+      );
+    }
+  }
+
+  let rfcEmpresaDetectado: string | null = null;
+  let maxFrequency = 0;
+
+  for (const [rfc, count] of frequency) {
+    if (count > maxFrequency) {
+      maxFrequency = count;
+      rfcEmpresaDetectado = rfc;
+      continue;
+    }
+
+    if (count === maxFrequency && rfcEmpresaDetectado) {
+      const currentReceptorCount = receptorFrequency.get(rfcEmpresaDetectado) ?? 0;
+      const candidateReceptorCount = receptorFrequency.get(rfc) ?? 0;
+      if (candidateReceptorCount > currentReceptorCount) {
+        rfcEmpresaDetectado = rfc;
+      }
+    }
+  }
+
+  const hasMixedRfcs =
+    rfcEmpresaDetectado !== null &&
+    invoices.some(
+      (invoice) =>
+        invoice.rfcEmisor !== rfcEmpresaDetectado &&
+        invoice.rfcReceptor !== rfcEmpresaDetectado,
+    );
+
+  return { rfcEmpresaDetectado, hasMixedRfcs };
+}
+
 /**
  * Helper para obtener un atributo de un elemento XML soportando prefijos de namespace
  * (ej. busca tanto 'cfdi:Emisor' como 'Emisor' por seguridad entre navegadores)
@@ -9,15 +78,12 @@ const getElementAttribute = (
   tagName: string,
   attrName: string,
 ): string => {
-  // Intentar con el prefijo estándar del SAT
   let element = xmlDoc.getElementsByTagName(`cfdi:${tagName}`)[0];
 
-  // Fallback por si el navegador limpia los prefijos al parsear
   if (!element) {
     element = xmlDoc.getElementsByTagName(tagName)[0];
   }
 
-  // Si es el Timbre Fiscal Digital (UUID) suele tener el prefijo tfd
   if (!element && tagName === "TimbreFiscalDigital") {
     element = xmlDoc.getElementsByTagName(`tfd:${tagName}`)[0];
   }
@@ -32,11 +98,9 @@ const parseSingleXml = (xmlText: string): InvoiceXML | null => {
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(xmlText, "text/xml");
 
-  // Validar si el XML tiene errores de parseo básicos
   const parseError = xmlDoc.getElementsByTagName("parsererror")[0];
   if (parseError) return null;
 
-  // 1. Datos del comprobante raíz (cfdi:Comprobante)
   let comprobante = xmlDoc.getElementsByTagName("cfdi:Comprobante")[0];
   if (!comprobante) {
     comprobante = xmlDoc.getElementsByTagName("Comprobante")[0];
@@ -44,13 +108,16 @@ const parseSingleXml = (xmlText: string): InvoiceXML | null => {
 
   if (!comprobante) return null;
 
-  const fechaRaw = comprobante.getAttribute("Fecha") || ""; // Formato SAT: YYYY-MM-DDTHH:mm:ss
-  const fecha = fechaRaw.split("T")[0]; // Nos quedamos solo con YYYY-MM-DD
-  const tipoComprobanteSat =
-    comprobante.getAttribute("TipoDeComprobante") || "I";
-  const type = tipoComprobanteSat === "E" ? "EGRESO" : (tipoComprobanteSat === "P" ? "INGRESO" : "INGRESO");
+  const fechaRaw = comprobante.getAttribute("Fecha") || "";
+  const fecha = fechaRaw.split("T")[0];
+  const tipoComprobanteSat = comprobante.getAttribute("TipoDeComprobante") || "I";
+  const type =
+    tipoComprobanteSat === "E"
+      ? "EGRESO"
+      : tipoComprobanteSat === "P"
+        ? "INGRESO"
+        : "INGRESO";
 
-  // 2. Datos de Emisor y Receptor
   const rfcEmisor = getElementAttribute(xmlDoc, "Emisor", "Rfc");
   const nameEmisor =
     getElementAttribute(xmlDoc, "Emisor", "Nombre") || "Emisor Desconocido";
@@ -58,10 +125,7 @@ const parseSingleXml = (xmlText: string): InvoiceXML | null => {
   const nameReceptor =
     getElementAttribute(xmlDoc, "Receptor", "Nombre") || "Receptor Desconocido";
 
-  // 3. Folio Fiscal Unico (UUID) del Timbre Fiscal Digital
   const uuid = getElementAttribute(xmlDoc, "TimbreFiscalDigital", "UUID");
-
-  // Si no tiene UUID, no es una factura timbrada válida para conciliar
   if (!uuid) return null;
 
   let totalStr: string;
@@ -92,20 +156,29 @@ const parseSingleXml = (xmlText: string): InvoiceXML | null => {
 };
 
 /**
- * Lee y extrae la información de una lista (o carpeta) de archivos XML de facturas
+ * Lee y extrae la información de una lista (o carpeta) de archivos XML de facturas,
+ * detectando el RFC de la empresa y validando consistencia del lote.
  */
-export const extractInvoicesXml = (files: File[]): Promise<InvoiceXML[]> => {
+export const extractInvoicesXml = (files: File[]): Promise<ExtractInvoicesXmlResult> => {
   return new Promise((resolve) => {
-    // Filtrar para asegurarnos de procesar solo archivos .xml
     const xmlFiles = files.filter((f) => f.name.toLowerCase().endsWith(".xml"));
 
     if (xmlFiles.length === 0) {
-      resolve([]);
+      resolve({
+        invoices: [],
+        rfcEmpresaDetectado: null,
+        hasMixedRfcs: false,
+      });
       return;
     }
 
     const invoices: InvoiceXML[] = [];
     let processedCount = 0;
+
+    const finalize = () => {
+      const { rfcEmpresaDetectado, hasMixedRfcs } = analizarYValidarRfcs(invoices);
+      resolve({ invoices, rfcEmpresaDetectado, hasMixedRfcs });
+    };
 
     xmlFiles.forEach((file) => {
       const reader = new FileReader();
@@ -120,16 +193,15 @@ export const extractInvoicesXml = (files: File[]): Promise<InvoiceXML[]> => {
         }
 
         processedCount++;
-        // Cuando todos los archivos terminen de leerse (exitosos o fallidos), resolvemos
         if (processedCount === xmlFiles.length) {
-          resolve(invoices);
+          finalize();
         }
       };
 
       reader.onerror = () => {
         processedCount++;
         if (processedCount === xmlFiles.length) {
-          resolve(invoices);
+          finalize();
         }
       };
 

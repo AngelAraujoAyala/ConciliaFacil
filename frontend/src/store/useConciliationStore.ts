@@ -17,6 +17,7 @@ import {
   createConciliationGroup,
   removeGroupFromState,
 } from "../features/conciliation/utils/conciliationGroupOps";
+import type { ExtractInvoicesXmlResult } from "../features/conciliation/utils/extractInvoicesXml";
 import type { BankMovement, InvoiceXML, ConciliationGroup, ExceptionType } from "../types";
 
 const indexedDBStorage: StateStorage = {
@@ -36,11 +37,18 @@ export type ConciliationStep = "BANK_UPLOAD" | "INVOICE_UPLOAD" | "RESULTS";
 export interface ConciliationSnapshot {
   id: string;
   title: string;
+  rfcEmpresa?: string | null;
   matches: ConciliationGroup[];
   movements: BankMovement[];
   invoices: InvoiceXML[];
   remainingInvoices: InvoiceXML[];
   remainingBankMovements: BankMovement[];
+}
+
+export interface InvoiceUploadResult {
+  success: boolean;
+  addedCount?: number;
+  error?: string;
 }
 
 interface ConciliationState {
@@ -53,12 +61,20 @@ interface ConciliationState {
   remainingInvoices: InvoiceXML[];
   remainingBankMovements: BankMovement[];
 
+  rfcEmpresaActual: string | null;
+  hasMixedRfcsError: boolean;
+
   selectedBankMovementIds: string[];
   selectedInvoiceIds: string[];
 
   setCurrentStep: (step: ConciliationStep) => void;
   setMovements: (movements: BankMovement[]) => void;
   setInvoices: (invoices: InvoiceXML[]) => void;
+  processInvoiceUpload: (
+    extraction: ExtractInvoicesXmlResult,
+    options?: { append?: boolean },
+  ) => InvoiceUploadResult;
+  clearMixedRfcsError: () => void;
 
   runConciliation: () => void;
   addIncrementalInvoices: (newInvoices: InvoiceXML[]) => { addedCount: number };
@@ -96,9 +112,22 @@ const INITIAL_STATE = {
   matches: [] as ConciliationGroup[],
   remainingInvoices: [] as InvoiceXML[],
   remainingBankMovements: [] as BankMovement[],
+  rfcEmpresaActual: null as string | null,
+  hasMixedRfcsError: false,
   selectedBankMovementIds: [] as string[],
   selectedInvoiceIds: [] as string[],
 };
+
+const MIXED_RFCS_ERROR_MESSAGE =
+  "Se detectaron RFCs de distintas empresas en el lote de XMLs. Carga únicamente facturas del mismo contribuyente.";
+
+function normalizeInvoices(invoices: InvoiceXML[]): InvoiceXML[] {
+  return invoices.map((inv) => ({
+    ...inv,
+    matchedMovementIds: inv.matchedMovementIds ?? [],
+    status: inv.status ?? (inv.matchedGroupId ? "MATCHED" : "UNMATCHED"),
+  }));
+}
 
 export const useConciliationStore = create<ConciliationState>()(
   persist(
@@ -118,12 +147,61 @@ export const useConciliationStore = create<ConciliationState>()(
 
       setInvoices: (invoices) =>
         set({
-          invoices: invoices.map((inv) => ({
-            ...inv,
-            matchedMovementIds: inv.matchedMovementIds ?? [],
-            status: inv.status ?? (inv.matchedGroupId ? "MATCHED" : "UNMATCHED"),
-          })),
+          invoices: normalizeInvoices(invoices),
+          ...(invoices.length === 0
+            ? { rfcEmpresaActual: null, hasMixedRfcsError: false }
+            : {}),
         }),
+
+      processInvoiceUpload: (extraction, options = {}) => {
+        const { append = false } = options;
+        const { invoices: parsedInvoices, rfcEmpresaDetectado, hasMixedRfcs } = extraction;
+
+        if (parsedInvoices.length === 0) {
+          return {
+            success: false,
+            error: "No se encontraron facturas XML válidas o timbradas en la selección.",
+          };
+        }
+
+        if (hasMixedRfcs) {
+          set({ hasMixedRfcsError: true });
+          return { success: false, error: MIXED_RFCS_ERROR_MESSAGE };
+        }
+
+        const { rfcEmpresaActual, invoices: existingInvoices } = get();
+
+        if (
+          append &&
+          rfcEmpresaActual &&
+          rfcEmpresaDetectado &&
+          rfcEmpresaActual !== rfcEmpresaDetectado
+        ) {
+          set({ hasMixedRfcsError: true });
+          return { success: false, error: MIXED_RFCS_ERROR_MESSAGE };
+        }
+
+        const normalizedNew = normalizeInvoices(parsedInvoices);
+
+        if (append) {
+          const { addedCount } = get().addIncrementalInvoices(normalizedNew);
+          set({
+            rfcEmpresaActual: rfcEmpresaDetectado ?? rfcEmpresaActual,
+            hasMixedRfcsError: false,
+          });
+          return { success: true, addedCount };
+        }
+
+        set({
+          invoices: normalizedNew,
+          rfcEmpresaActual: rfcEmpresaDetectado,
+          hasMixedRfcsError: false,
+        });
+
+        return { success: true, addedCount: normalizedNew.length };
+      },
+
+      clearMixedRfcsError: () => set({ hasMixedRfcsError: false }),
 
       runConciliation: () => {
         const { movements, invoices } = get();
@@ -383,6 +461,8 @@ export const useConciliationStore = create<ConciliationState>()(
         set({
           activeConciliationId: snapshot.id,
           activeConciliationTitle: snapshot.title,
+          rfcEmpresaActual: snapshot.rfcEmpresa ?? null,
+          hasMixedRfcsError: false,
           currentStep: "RESULTS",
           matches: snapshot.matches,
           movements: snapshot.movements.map((m) => ({
@@ -408,6 +488,7 @@ export const useConciliationStore = create<ConciliationState>()(
         currentStep: state.currentStep,
         activeConciliationId: state.activeConciliationId,
         activeConciliationTitle: state.activeConciliationTitle,
+        rfcEmpresaActual: state.rfcEmpresaActual,
         movements: state.movements,
         invoices: state.invoices,
         matches: state.matches,

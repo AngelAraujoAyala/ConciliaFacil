@@ -20,6 +20,10 @@ export class CreateConciliationDto {
   @IsNotEmpty()
   status!: string;
 
+  @IsString()
+  @IsOptional()
+  rfcEmpresa?: string;
+
   @IsNumber()
   successRate!: number;
 

@@ -6,10 +6,19 @@ export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getProfile(id: string, email: string) {
-    // 1. Intentamos buscar al usuario
+    // 1. Intentamos buscar al usuario (incluyendo plan y empresas registradas)
     let user = await this.prisma.user.findUnique({
       where: { id },
       include: {
+        empresas: {
+          select: {
+            id: true,
+            rfc: true,
+            razonSocial: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'asc' },
+        },
         _count: {
           select: { conciliations: true },
         },
@@ -26,11 +35,18 @@ export class UsersService {
         data: {
           id, // Usamos el mismo UUID exacto de Supabase Auth
           email,
-          // Aquí puedes mapear campos por defecto que requiera tu modelo:
-          // isSubscribed: false,
-          // freeConciliationsLeft: 5,
+          // plan se asigna FREE por defecto desde Prisma schema
         },
         include: {
+          empresas: {
+            select: {
+              id: true,
+              rfc: true,
+              razonSocial: true,
+              createdAt: true,
+            },
+            orderBy: { createdAt: 'asc' },
+          },
           _count: {
             select: { conciliations: true },
           },

@@ -10,6 +10,7 @@ export interface ConciliationSummary {
   id: string;
   title: string;
   status: ConciliationStatus;
+  rfcEmpresa?: string | null;
   totalInvoices: number;
   totalBankMovements: number;
   matchedCount: number;

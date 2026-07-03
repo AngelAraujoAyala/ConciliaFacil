@@ -1,3 +1,16 @@
+// ── Plan & Empresa ────────────────────────────────────────────────────────────
+export type UserPlan = "FREE" | "BASIC" | "PRO";
+
+export interface Empresa {
+  id: string;
+  rfc: string;
+  razonSocial: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ── Conciliación ──────────────────────────────────────────────────────────────
 export type MatchStatus = "MATCHED" | "PARTIAL" | "UNMATCHED";
 export type MovementType = "INGRESO" | "EGRESO";
 

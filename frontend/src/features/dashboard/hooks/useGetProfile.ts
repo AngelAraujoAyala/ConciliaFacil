@@ -1,12 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../../api/apiClient';
 
+import type { UserPlan } from '../../../types';
+
 // Definimos el tipo basado estrictamente en tu modelo de Prisma
 export interface UserProfile {
   id: string;
   email: string;
   isSubscribed: boolean;
   freeConciliationsLeft: number;
+  plan: UserPlan;
+  monthlyConciliations: number;
+  nextResetDate: string;
   createdAt: string;
   _count: {
     conciliations: number;

@@ -9,6 +9,7 @@ export interface CreateConciliationDto {
   title: string;
   status: string;
   userId: string;
+  rfcEmpresa: string;
   successRate: number;
   totalInvoices: number;
   totalBankMovements: number;

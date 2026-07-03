@@ -13,12 +13,22 @@ enum ConciliationStatus {
   COMPLETED
 }
 
+enum UserPlan {
+  FREE
+  BASIC
+  PRO
+}
+
 model User {
   id                    String         @id @default(uuid())
   email                 String         @unique
+  plan                  UserPlan       @default(FREE)
   isSubscribed          Boolean        @default(false)
   freeConciliationsLeft Int            @default(1)
+  monthlyConciliations  Int            @default(0)
+  nextResetDate         DateTime       @default(now())
   conciliations         Conciliation[]
+  empresas              Empresa[]
 
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
@@ -26,10 +36,26 @@ model User {
   @@map("users")
 }
 
+model Empresa {
+  id            String         @id @default(uuid())
+  rfc           String         @unique
+  razonSocial   String
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conciliations Conciliation[]
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([userId])
+  @@map("empresas")
+}
+
 model Conciliation {
   id                     String             @id @default(uuid())
   title                  String
   status                 ConciliationStatus @default(DRAFT)
+  rfcEmpresa             String?
 
   totalInvoices          Int                @default(0)
   totalBankMovements     Int                @default(0)
@@ -47,10 +73,14 @@ model Conciliation {
   userId                 String
   user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  empresaId              String?
+  empresa                Empresa?           @relation(fields: [empresaId], references: [id], onDelete: SetNull)
+
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 
   @@index([userId])
+  @@index([empresaId])
   @@index([schemaVersion])
   @@map("conciliations")
 }
