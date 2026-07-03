@@ -1,37 +1,28 @@
 import React from "react";
 import { MetricCard } from "./MetricCard";
-import { useAuthStore } from "../../../store/authStore";
+import { useGetProfile } from "../hooks/useGetProfile";
 import { useConciliationHistory } from "../../conciliation/hooks/useConciliationHistory";
-import { BarChart3, Landmark, Calendar } from "lucide-react";
+import { BarChart3, Landmark, Building2 } from "lucide-react";
 import type { BankMovement } from "../../../types";
 
-const PLAN_LIMITS = {
-  Gratis: 3,
-  Premium: 50,
-  Despacho: 200,
-};
-
 export const MetricsGrid: React.FC = () => {
-  const user = useAuthStore((state) => state.user);
+  const { data: profile, isLoading: isProfileLoading } = useGetProfile();
   const { data: history } = useConciliationHistory();
 
   // 1. Tarjeta 1: Uso Mensual del Plan y Reinicio del Contador
-  const rawPlan = user?.user_metadata?.plan;
-  const plan = (rawPlan === "Gratis" || rawPlan === "Premium" || rawPlan === "Despacho" ? rawPlan : "Gratis") as keyof typeof PLAN_LIMITS;
+  const isUnlimited = profile?.plan === "BASIC" || profile?.plan === "PRO";
+  const limitText = isUnlimited ? "ilimitadas" : "3";
+  const usageCount = profile?.monthlyConciliations ?? 0;
+  const usageValue = `${usageCount} / ${limitText}`;
 
-  const limit = PLAN_LIMITS[plan] || 3;
-  const isPremiumUnlimited = plan === "Premium"; // Manejo de excepción para Premium ilimitado
-
-  // Contamos las conciliaciones realizadas (o todas las registradas) para el consumo
-  const usageCount = history?.length || 0;
-  const usageValue = isPremiumUnlimited ? "Ilimitadas" : `${usageCount} / ${limit}`;
-
-  // Cálculo dinámico de días restantes para el próximo mes
+  // Cálculo dinámico de días restantes para el próximo mes basándose en nextResetDate de la BD
   const now = new Date();
-  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  const diffTime = nextMonth.getTime() - now.getTime();
+  const nextReset = profile?.nextResetDate ? new Date(profile.nextResetDate) : new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const diffTime = nextReset.getTime() - now.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  const usageDescription = `Faltan ${diffDays} días para el reinicio de tu contador`;
+  const usageDescription = diffDays > 0 
+    ? `Faltan ${diffDays} día${diffDays === 1 ? "" : "s"} para el reinicio de tu contador` 
+    : "Tu contador se reiniciará hoy";
 
   // 2. Tarjeta 2: Progreso de Cuadre en Conciliaciones Pendientes (Borradores)
   const drafts = (history ?? []).filter((c) => c.status === "DRAFT");
@@ -76,23 +67,12 @@ export const MetricsGrid: React.FC = () => {
   const formattedProgreso = `${formatCurrency(montoCuadrado)} / ${formatCurrency(montoTotal)} MXN`;
   const amountDescription = "Monto cuadrado en borradores actuales";
 
-  // 3. Tarjeta 3: Última Actividad (Sin Fallbacks Mocks)
-  let lastActivityValue = "Aún no hay conciliaciones";
-  let lastActivityDesc = "Inicia un proceso para ver actividad";
-
-  if (history && history.length > 0) {
-    const dates = history.map((c) => new Date(c.createdAt).getTime());
-    const maxDate = new Date(Math.max(...dates));
-
-    const day = String(maxDate.getDate()).padStart(2, "0");
-    const month = String(maxDate.getMonth() + 1).padStart(2, "0");
-    const year = maxDate.getFullYear();
-    const hours = String(maxDate.getHours()).padStart(2, "0");
-    const minutes = String(maxDate.getMinutes()).padStart(2, "0");
-
-    lastActivityValue = `${day}/${month}/${year} - ${hours}:${minutes} hrs`;
-    lastActivityDesc = "Fecha y hora de la última operación";
-  }
+  // 3. Tarjeta 3: RFCs conciliados este mes
+  const rfcCount = profile?.empresas?.length ?? 0;
+  const isRfcUnlimited = profile?.plan === "PRO";
+  const rfcLimitText = isRfcUnlimited ? "ilimitados" : (profile?.plan === "BASIC" ? "5" : "1");
+  const rfcValue = `${rfcCount} / ${rfcLimitText}`;
+  const rfcDescription = usageDescription;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -101,7 +81,8 @@ export const MetricsGrid: React.FC = () => {
         value={usageValue}
         description={usageDescription}
         icon={<BarChart3 className="h-5 w-5" />}
-        accentColor={isPremiumUnlimited ? "emerald" : "indigo"}
+        accentColor={isUnlimited ? "emerald" : "indigo"}
+        isLoading={isProfileLoading}
       />
       <MetricCard
         title="Progreso de Cuadre"
@@ -111,11 +92,12 @@ export const MetricsGrid: React.FC = () => {
         accentColor="indigo"
       />
       <MetricCard
-        title="Última Actividad"
-        value={lastActivityValue}
-        description={lastActivityDesc}
-        icon={<Calendar className="h-5 w-5" />}
-        accentColor="amber"
+        title="RFCs Conciliados este Mes"
+        value={rfcValue}
+        description={rfcDescription}
+        icon={<Building2 className="h-5 w-5" />}
+        accentColor={isRfcUnlimited ? "emerald" : "amber"}
+        isLoading={isProfileLoading}
       />
     </div>
   );

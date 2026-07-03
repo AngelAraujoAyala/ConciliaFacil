@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../../api/apiClient';
 
-import type { UserPlan } from '../../../types';
+import type { UserPlan, Empresa } from '../../../types';
 
 // Definimos el tipo basado estrictamente en tu modelo de Prisma
 export interface UserProfile {
@@ -12,6 +12,7 @@ export interface UserProfile {
   plan: UserPlan;
   monthlyConciliations: number;
   nextResetDate: string;
+  empresas: Empresa[];
   createdAt: string;
   _count: {
     conciliations: number;
