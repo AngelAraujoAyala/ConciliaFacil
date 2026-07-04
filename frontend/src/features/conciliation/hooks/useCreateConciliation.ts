@@ -38,6 +38,7 @@ export function useCreateConciliation() {
 
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["conciliations"] });
+      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
 
       if (variables.status === "COMPLETED") {
         toast.success("¡Excelente!", {

@@ -38,7 +38,7 @@ model User {
 
 model Empresa {
   id            String         @id @default(uuid())
-  rfc           String         @unique
+  rfc           String
   razonSocial   String
   userId        String
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -47,6 +47,7 @@ model Empresa {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
+  @@unique([rfc, userId])
   @@index([userId])
   @@map("empresas")
 }
