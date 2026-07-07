@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useBillingStore } from "../../../store/useBillingStore";
 import { PriceCard } from "../components/PriceCard";
 import type { SubscriptionPlan } from "../components/PriceCard";
@@ -25,9 +25,9 @@ const PLANS: SubscriptionPlan[] = [
       "Exportacion de resultados en PDF",
       "Soporte por correo (48 h)",
     ],
-    stripePriceId: null, // Plan gratuito — sin cargo en Stripe
+    stripePriceId: null,
     isPopular: false,
-    isDisabled: true, // Ya activo por defecto; no requiere accion
+    isDisabled: true,
     ctaLabel: "Plan actual",
   },
   {
@@ -39,16 +39,36 @@ const PLANS: SubscriptionPlan[] = [
       "El plan profesional para despachos contables con alto volumen mensual.",
     features: [
       "Hasta 50 conciliaciones por mes",
+      "Hasta 5 RFCs de clientes",
       "Carga masiva de multiples XMLs",
       "Cruce N:M (movimientos vs facturas)",
       "Clasificacion de excepciones",
       "Historial de sesiones (90 dias)",
       "Soporte prioritario (4 h)",
     ],
-    // TODO: Reemplaza este valor con tu price_xxx de Stripe
     stripePriceId: "price_1TpCWFRk8JjGytDbEsAY9wVo",
-    isPopular: true,
+    isPopular: false,
     ctaLabel: "Suscribirse ahora",
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    price: "$899 MXN",
+    priceSuffix: "/ mes",
+    description:
+      "Para despachos de alto crecimiento que necesitan capacidad ilimitada y soporte premium.",
+    features: [
+      "Hasta 200 conciliaciones por mes",
+      "RFCs de clientes ilimitados",
+      "Todo lo del plan Basic",
+      "Exportacion avanzada a Excel (XLSX)",
+      "Historial completo sin limite de tiempo",
+      "Acceso anticipado a nuevas funciones",
+      "Soporte dedicado (1 h)",
+    ],
+    stripePriceId: "price_1TqgASRk8JjGytDb5oegIhB0",
+    isPopular: true,
+    ctaLabel: "Obtener Plan Pro",
   },
 ];
 
@@ -195,7 +215,7 @@ export const PricingPage: React.FC = () => {
         {/* ── Grid de tarjetas de planes ────────────────────────────────── */}
         <section
           aria-label="Planes de suscripcion disponibles"
-          className="grid grid-cols-1 gap-8 sm:grid-cols-2"
+          className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3"
         >
           {PLANS.map((plan) => (
             <PriceCard

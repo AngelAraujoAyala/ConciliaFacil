@@ -4,6 +4,19 @@ import Stripe from 'stripe';
 import { BadRequestException } from '@nestjs/common';
 import { UserPlan } from '@prisma/client';
 
+/**
+ * Mapa de configuracion de planes indexado por Stripe Price ID.
+ * Al agregar un nuevo plan, solo se debe anadir una entrada aqui.
+ *
+ * NOTA: monthlyConciliations NO forma parte de este mapa porque es el
+ * contador de uso actual del mes del usuario — nunca debe sobreescribirse
+ * al hacer upgrade. Los limites (3 / 50 / 200) se validan en reconciliations.service.ts.
+ */
+const PLAN_CONFIG: Record<string, { plan: UserPlan }> = {
+    'price_1TpCWFRk8JjGytDbEsAY9wVo': { plan: UserPlan.BASIC },
+    'price_1TqgASRk8JjGytDb5oegIhB0': { plan: UserPlan.PRO   },
+};
+
 @Injectable()
 export class BillingService {
     private stripe: Stripe;
@@ -118,23 +131,34 @@ export class BillingService {
                 // En Stripe API v2026-06-24.dahlia, current_period_end vive en los items de la suscripcion,
                 // no en la raiz del objeto Subscription.
                 const periodEnd = subscription.items.data[0]?.current_period_end || (Math.floor(Date.now() / 1000) + 30 * 24 * 3600);
+                const purchasedPriceId = subscription.items.data[0]?.price.id;
 
-                // Actualizamos al usuario en la base de datos
+                // Resolvemos el plan a partir del Price ID comprado.
+                // Si el priceId no esta en el mapa (compra inesperada), usamos BASIC como fallback seguro.
+                // monthlyConciliations NO se toca: es el contador de uso actual del mes, no el limite del plan.
+                const planConfig = PLAN_CONFIG[purchasedPriceId] ?? { plan: UserPlan.BASIC };
+
+                console.log(`[Webhook] Precio comprado: ${purchasedPriceId} → Plan: ${planConfig.plan}`);
+
+                // Actualizamos al usuario en la base de datos.
+                // Solo se actualizan los campos de Stripe y el plan — el contador de conciliaciones
+                // (monthlyConciliations) se preserva tal como estaba antes del upgrade.
                 await this.prisma.user.update({
                     where: { id: userId },
                     data: {
                         stripeCustomerId,
                         stripeSubscriptionId,
-                        stripePriceId: subscription.items.data[0].price.id,
+                        stripePriceId: purchasedPriceId,
                         subscriptionStatus: subscription.status,
                         currentPeriodEnd: new Date(periodEnd * 1000),
-                        plan: UserPlan.BASIC,
+                        plan: planConfig.plan,
                         isSubscribed: true,
-                        monthlyConciliations: 50,
+                        // monthlyConciliations se omite intencionalmente:
+                        // el usuario conserva su contador actual del mes.
                     },
                 });
 
-                console.log(`[Webhook] ✅ BD actualizada — usuario ${userId} → plan BASIC, 50 conciliaciones`);
+                console.log(`[Webhook] ✅ BD actualizada — usuario ${userId} → plan ${planConfig.plan} (contador de conciliaciones preservado)`);
                 break;
             }
 

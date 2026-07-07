@@ -69,6 +69,10 @@ export const router = createBrowserRouter([
         element: <HistoryPage />,
       },
       {
+        path: "planes",
+        element: <PricingPage />,
+      },
+      {
         path: "configuracion",
         element: (
           <div className="p-6 bg-white rounded-xl shadow-sm border">

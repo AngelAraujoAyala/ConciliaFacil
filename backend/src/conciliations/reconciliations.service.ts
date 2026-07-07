@@ -74,15 +74,32 @@ export class ReconciliationsService {
 
         if (user.plan === UserPlan.BASIC && empresasRegistradas >= 5) {
           throw new ForbiddenException(
-            'Has alcanzado el límite de 5 RFCs de tu plan Básico. Actualiza a Plan Pro para gestionar más clientes.',
+            'Has alcanzado el limite de 5 RFCs de tu plan Basico. Actualiza a Plan Pro para gestionar mas clientes.',
           );
         }
+        // El plan PRO no tiene limite de RFCs.
       }
     }
 
+    // ── Validacion de conciliaciones mensuales por plan ──────────────────────
     if (user.plan === UserPlan.FREE && user.monthlyConciliations >= 3) {
       throw new ForbiddenException(
-        'Has alcanzado el límite de 3 conciliaciones mensuales de tu plan gratuito. El contador se reiniciará el ' +
+        'Has alcanzado el limite de 3 conciliaciones mensuales de tu plan gratuito. El contador se reiniciara el ' +
+          user.nextResetDate.toLocaleDateString(),
+      );
+    }
+
+    if (user.plan === UserPlan.BASIC && user.monthlyConciliations >= 50) {
+      throw new ForbiddenException(
+        'Has alcanzado el limite de 50 conciliaciones mensuales de tu plan Basic. El contador se reiniciara el ' +
+          user.nextResetDate.toLocaleDateString() +
+          '. Actualiza a Plan Pro para obtener 200 conciliaciones.',
+      );
+    }
+
+    if (user.plan === UserPlan.PRO && user.monthlyConciliations >= 200) {
+      throw new ForbiddenException(
+        'Has alcanzado el limite de 200 conciliaciones mensuales de tu plan Pro. El contador se reiniciara el ' +
           user.nextResetDate.toLocaleDateString(),
       );
     }

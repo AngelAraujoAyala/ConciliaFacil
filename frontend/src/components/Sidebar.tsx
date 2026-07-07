@@ -5,11 +5,11 @@ import {
   Home,
   BarChart2,
   FileText,
+  CreditCard,
   Settings,
   HelpCircle,
   type LucideIcon,
 } from "lucide-react";
-// Importa el hook personalizado
 import { useSidebar } from "./SidebarContext";
 
 interface MenuItem {
@@ -30,6 +30,7 @@ export default function Sidebar() {
       to: "/home/nueva-conciliacion",
     },
     { icon: FileText, label: "Historial", to: "/home/historial" },
+    { icon: CreditCard, label: "Planes", to: "/home/planes" },
   ];
 
   return (
@@ -66,10 +67,9 @@ export default function Sidebar() {
                 end={item.to === "/home"}
                 className={({ isActive }) => `
                   flex items-center gap-4 px-3 py-3 rounded-lg hover:bg-slate-800 hover:text-emerald-400 transition-all group
-                  ${
-                    isActive
-                      ? "bg-emerald-500/10 text-emerald-400 font-medium border-l-4 border-emerald-400 rounded-l-none pl-2"
-                      : "text-slate-400"
+                  ${isActive
+                    ? "bg-emerald-500/10 text-emerald-400 font-medium border-l-4 border-emerald-400 rounded-l-none pl-2"
+                    : "text-slate-400"
                   }
                 `}
               >
@@ -94,10 +94,9 @@ export default function Sidebar() {
           to="/home/configuracion"
           className={({ isActive }) => `
             flex items-center gap-4 px-3 py-3 rounded-lg hover:bg-slate-800 hover:text-white transition-all
-            ${
-              isActive
-                ? "bg-emerald-500/10 text-emerald-400 font-medium border-l-4 border-emerald-400 rounded-l-none pl-2"
-                : "text-slate-400"
+            ${isActive
+              ? "bg-emerald-500/10 text-emerald-400 font-medium border-l-4 border-emerald-400 rounded-l-none pl-2"
+              : "text-slate-400"
             }
           `}
         >
@@ -114,10 +113,9 @@ export default function Sidebar() {
           to="/home/soporte"
           className={({ isActive }) => `
             flex items-center gap-4 px-3 py-3 rounded-lg hover:bg-slate-800 hover:text-white transition-all
-            ${
-              isActive
-                ? "bg-emerald-500/10 text-emerald-400 font-medium border-l-4 border-emerald-400 rounded-l-none pl-2"
-                : "text-slate-400"
+            ${isActive
+              ? "bg-emerald-500/10 text-emerald-400 font-medium border-l-4 border-emerald-400 rounded-l-none pl-2"
+              : "text-slate-400"
             }
           `}
         >
