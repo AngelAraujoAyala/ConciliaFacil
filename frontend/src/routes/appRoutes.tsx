@@ -6,6 +6,7 @@ import { DashboardPage } from "../features/dashboard/pages/DashboardPage";
 import ConciliationPage from "../features/conciliation/pages/ConciliationPage";
 import { HistoryPage } from "../features/history/pages/HistoryPage";
 import { SupportPage } from "../pages/SupportPage";
+import { PricingPage } from "../features/billing/pages/PricingPage";
 
 import RegisterPage from "../features/auth/pages/RegisterPage";
 import { LoginPage } from "../features/auth/pages/LoginPage";
@@ -36,6 +37,12 @@ export const router = createBrowserRouter([
   {
     path: "/auth/callback",
     element: <AuthCallback />,
+  },
+  {
+    // Ruta publica — accesible sin autenticacion para que usuarios FREE
+    // puedan upgrade y para que la landing page enlace a ella.
+    path: "/pricing",
+    element: <PricingPage />,
   },
   {
     path: "/dashboard",
