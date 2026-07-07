@@ -30,6 +30,13 @@ model User {
   conciliations         Conciliation[]
   empresas              Empresa[]
 
+  // ==== CAMPOS AGREGADOS PARA STRIPE ====
+  stripeCustomerId       String?   @unique // ID del cliente asignado por Stripe
+  stripeSubscriptionId   String?   @unique // ID de la suscripción activa
+  stripePriceId          String?   // Identifica qué plan compró (price_...)
+  subscriptionStatus     String?   // Estado según Stripe (active, trialing, past_due, canceled)
+  currentPeriodEnd       DateTime? // Fin del ciclo de facturación actual de Stripe
+
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
 
