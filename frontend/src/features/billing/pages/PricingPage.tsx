@@ -20,9 +20,13 @@ const PLANS: SubscriptionPlan[] = [
       "Ideal para evaluar la herramienta con conciliaciones de bajo volumen.",
     features: [
       "Hasta 3 conciliaciones por mes",
+      "Hasta 1 RFC de cliente distinto",
       "Carga de archivos Excel y CSV",
-      "Cruce automatico de XMLs (CFDI)",
+      "Carga masiva de multiples XMLs",
+      "Cruce automatico de Movimientos vs XMLs",
       "Exportacion de resultados en PDF",
+      "Clasificacion de excepciones",
+      "Historial de sesiones",
       "Soporte por correo (48 h)",
     ],
     stripePriceId: null,
@@ -38,13 +42,15 @@ const PLANS: SubscriptionPlan[] = [
     description:
       "El plan profesional para despachos contables con alto volumen mensual.",
     features: [
-      "Hasta 50 conciliaciones por mes",
-      "Hasta 5 RFCs de clientes",
+      "Conciliaciones ILIMITADAS",
+      "Hasta 5 RFCs de clientes distintos",
+      "Carga de archivos Excel y CSV",
       "Carga masiva de multiples XMLs",
-      "Cruce N:M (movimientos vs facturas)",
+      "Cruce automatico de Movimientos vs XMLs",
+      "Exportacion de resultados en PDF",
       "Clasificacion de excepciones",
-      "Historial de sesiones (90 dias)",
-      "Soporte prioritario (4 h)",
+      "Historial de sesiones",
+      "Soporte prioritario por WhatsApp",
     ],
     stripePriceId: "price_1TpCWFRk8JjGytDbEsAY9wVo",
     isPopular: false,
@@ -58,13 +64,15 @@ const PLANS: SubscriptionPlan[] = [
     description:
       "Para despachos de alto crecimiento que necesitan capacidad ilimitada y soporte premium.",
     features: [
-      "Hasta 200 conciliaciones por mes",
-      "RFCs de clientes ilimitados",
-      "Todo lo del plan Basic",
-      "Exportacion avanzada a Excel (XLSX)",
-      "Historial completo sin limite de tiempo",
-      "Acceso anticipado a nuevas funciones",
-      "Soporte dedicado (1 h)",
+      "Conciliaciones ILIMITADAS",
+      "RFCs ILIMITADOS de clientes distintos",
+      "Carga de archivos Excel y CSV",
+      "Carga masiva de multiples XMLs",
+      "Cruce automatico de Movimientos vs XMLs",
+      "Exportacion de resultados en PDF",
+      "Clasificacion de excepciones",
+      "Historial de sesiones",
+      "Soporte prioritario por WhatsApp",
     ],
     stripePriceId: "price_1TqgASRk8JjGytDb5oegIhB0",
     isPopular: true,
@@ -179,7 +187,7 @@ export const PricingPage: React.FC = () => {
           </span>
           <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
             Elige el plan{" "}
-            <span className="text-indigo-600">correcto para ti</span>
+            <span className="text-indigo-600">perfecto para ti</span>
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-slate-500">
             Sin costos ocultos. Cancela cuando quieras. Procesamiento local

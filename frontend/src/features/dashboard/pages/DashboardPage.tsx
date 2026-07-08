@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useGetProfile } from "../hooks/useGetProfile";
 import { WelcomeHeader } from "../components/WelcomeHeader";
 import { MetricsGrid } from "../components/MetricsGrid";
@@ -9,6 +11,8 @@ import { useAuthStore } from "../../../store/authStore";
 export const DashboardPage: React.FC = () => {
   const { data: profile, isLoading, error } = useGetProfile();
   const user = useAuthStore((state) => state.user);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
 
   // ── Estado de selección de borrador ────────────────────────────────────────
   // Vivir aquí evita contaminar el store global con estado puramente de UI.
@@ -18,6 +22,18 @@ export const DashboardPage: React.FC = () => {
   const handleSelectDraft = useCallback((id: string | null) => {
     setSelectedConciliationId((prev) => (prev === id ? null : id)); // toggle
   }, []);
+
+  // ── Detectar retorno desde Stripe Checkout ─────────────────────────────────
+  // Stripe redirige a /home?session_id=cs_xxx al completar el pago.
+  // Invalidamos el caché de React Query para forzar un refetch inmediato del
+  // perfil desde NestJS/Prisma, reflejando el nuevo plan en la UI.
+  useEffect(() => {
+    if (searchParams.get("session_id")) {
+      void queryClient.invalidateQueries({ queryKey: ["userProfile"] });
+      // Limpiar el parámetro de la URL sin agregar entrada al historial
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, queryClient, setSearchParams]);
 
   // ── Sincronizar plan de NestJS/Prisma → user_metadata ─────────────────────
   useEffect(() => {
