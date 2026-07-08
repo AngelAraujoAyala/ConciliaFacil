@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { FeatureBullet } from "./FeatureBullet";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -30,6 +30,10 @@ export interface SubscriptionPlan {
   isDisabled?: boolean;
   /** Texto personalizado para el boton CTA. */
   ctaLabel: string;
+  /** Variante visual del botón de llamada a la acción. */
+  buttonVariant?: "primary" | "secondary" | "outline";
+  /** Si es el plan activo actual del usuario en sesión. */
+  isCurrent?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -45,7 +49,7 @@ interface PriceCardProps {
    * Permite mostrar el spinner solo en el boton correcto.
    */
   activePriceId: string | null;
-  onCheckout: (priceId: string) => void;
+  onCheckout: (priceId: string | null) => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -89,26 +93,47 @@ export const PriceCard: React.FC<PriceCardProps> = ({
   const isThisCardLoading =
     isLoading && activePriceId === plan.stripePriceId;
 
-  const isButtonDisabled =
-    plan.isDisabled === true || plan.stripePriceId === null || isLoading;
+  const isButtonDisabled = plan.isDisabled === true || isLoading;
 
   const handleClick = () => {
-    if (plan.stripePriceId && !isButtonDisabled) {
+    if (!isButtonDisabled) {
       onCheckout(plan.stripePriceId);
     }
   };
 
+  const variant = plan.buttonVariant || (plan.isPopular ? "primary" : "outline");
+
+  const buttonClasses = plan.isCurrent
+    ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+    : {
+        primary:
+          "bg-indigo-600 text-white shadow-md shadow-indigo-200 hover:bg-indigo-700 active:bg-indigo-800 focus-visible:ring-indigo-500 disabled:bg-indigo-300 disabled:shadow-none disabled:cursor-not-allowed",
+        secondary:
+          "bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300 focus-visible:ring-slate-400 disabled:opacity-50 disabled:cursor-not-allowed",
+        outline:
+          "border border-indigo-600 text-indigo-600 bg-transparent hover:bg-indigo-50 active:bg-indigo-100 focus-visible:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed",
+      }[variant];
+
   return (
     <article
-      className={`relative flex flex-col rounded-2xl border bg-white p-8 shadow-sm transition-all duration-300 ${
-        plan.isPopular
-          ? "border-indigo-500 shadow-indigo-100 shadow-lg ring-1 ring-indigo-500 scale-[1.02]"
+      className={`relative flex flex-col h-full rounded-2xl border bg-white p-8 shadow-sm transition-all duration-300 ${
+        plan.isCurrent
+          ? "border-indigo-600 shadow-indigo-100 shadow-lg ring-1 ring-indigo-600 scale-[1.02]"
           : "border-slate-200 hover:shadow-md hover:border-slate-300"
       }`}
       aria-label={`Plan ${plan.name}`}
     >
-      {/* Badge "Recomendado" — solo visible en el plan popular */}
-      {plan.isPopular && (
+      {/* Badge de Plan Actual */}
+      {plan.isCurrent && (
+        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-4 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-md">
+            Plan Actual
+          </span>
+        </div>
+      )}
+
+      {/* Badge "Recomendado" — solo visible en el plan popular si no es el actual */}
+      {!plan.isCurrent && plan.isPopular && (
         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-600 px-4 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-md">
             <svg
@@ -128,7 +153,7 @@ export const PriceCard: React.FC<PriceCardProps> = ({
       <div className="mb-6">
         <h3
           className={`text-sm font-bold uppercase tracking-widest ${
-            plan.isPopular ? "text-indigo-600" : "text-slate-500"
+            plan.isCurrent ? "text-indigo-600" : "text-slate-500"
           }`}
         >
           {plan.name}
@@ -149,7 +174,7 @@ export const PriceCard: React.FC<PriceCardProps> = ({
       {/* Divisor */}
       <div
         className={`mb-6 h-px w-full ${
-          plan.isPopular ? "bg-indigo-100" : "bg-slate-100"
+          plan.isCurrent ? "bg-indigo-100" : "bg-slate-100"
         }`}
       />
 
@@ -172,16 +197,16 @@ export const PriceCard: React.FC<PriceCardProps> = ({
               ? "Redirigiendo a Stripe..."
               : plan.ctaLabel
           }
-          className={`flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
-            plan.isPopular
-              ? "bg-indigo-600 text-white shadow-md shadow-indigo-200 hover:bg-indigo-700 active:bg-indigo-800 focus-visible:ring-indigo-500 disabled:bg-indigo-300 disabled:shadow-none disabled:cursor-not-allowed"
-              : "bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300 focus-visible:ring-slate-400 disabled:opacity-50 disabled:cursor-not-allowed"
-          }`}
+          className={`flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${buttonClasses}`}
         >
           {isThisCardLoading ? (
             <>
               <Spinner />
               <span>Redirigiendo...</span>
+            </>
+          ) : plan.isCurrent ? (
+            <>
+              <span>✓ Plan actual</span>
             </>
           ) : (
             plan.ctaLabel

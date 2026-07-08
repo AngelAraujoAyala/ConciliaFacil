@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { useBillingStore } from "../../../store/useBillingStore";
 import { PriceCard } from "../components/PriceCard";
 import type { SubscriptionPlan } from "../components/PriceCard";
+import { useGetProfile } from "../../dashboard/hooks/useGetProfile";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Datos de planes
@@ -16,17 +17,10 @@ const PLANS: SubscriptionPlan[] = [
     name: "Free",
     price: "$0",
     priceSuffix: "/ mes",
-    description:
-      "Ideal para evaluar la herramienta con conciliaciones de bajo volumen.",
+    description: "Plan básico para uso personal o pruebas de bajo volumen.",
     features: [
       "Hasta 3 conciliaciones por mes",
       "Hasta 1 RFC de cliente distinto",
-      "Carga de archivos Excel y CSV",
-      "Carga masiva de multiples XMLs",
-      "Cruce automatico de Movimientos vs XMLs",
-      "Exportacion de resultados en PDF",
-      "Clasificacion de excepciones",
-      "Historial de sesiones",
       "Soporte por correo (48 h)",
     ],
     stripePriceId: null,
@@ -39,17 +33,10 @@ const PLANS: SubscriptionPlan[] = [
     name: "Basic",
     price: "$349 MXN",
     priceSuffix: "/ mes",
-    description:
-      "El plan profesional para despachos contables con alto volumen mensual.",
+    description: "Ideal para contadores independientes y despachos medianos.",
     features: [
       "Conciliaciones ILIMITADAS",
       "Hasta 5 RFCs de clientes distintos",
-      "Carga de archivos Excel y CSV",
-      "Carga masiva de multiples XMLs",
-      "Cruce automatico de Movimientos vs XMLs",
-      "Exportacion de resultados en PDF",
-      "Clasificacion de excepciones",
-      "Historial de sesiones",
       "Soporte prioritario por WhatsApp",
     ],
     stripePriceId: "price_1TpCWFRk8JjGytDbEsAY9wVo",
@@ -61,17 +48,10 @@ const PLANS: SubscriptionPlan[] = [
     name: "Pro",
     price: "$899 MXN",
     priceSuffix: "/ mes",
-    description:
-      "Para despachos de alto crecimiento que necesitan capacidad ilimitada y soporte premium.",
+    description: "Capacidad total para despachos contables de alta carga transaccional.",
     features: [
       "Conciliaciones ILIMITADAS",
       "RFCs ILIMITADOS de clientes distintos",
-      "Carga de archivos Excel y CSV",
-      "Carga masiva de multiples XMLs",
-      "Cruce automatico de Movimientos vs XMLs",
-      "Exportacion de resultados en PDF",
-      "Clasificacion de excepciones",
-      "Historial de sesiones",
       "Soporte prioritario por WhatsApp",
     ],
     stripePriceId: "price_1TqgASRk8JjGytDb5oegIhB0",
@@ -141,6 +121,7 @@ const ErrorAlert: React.FC<ErrorAlertProps> = ({ message, onDismiss }) => (
 
 export const PricingPage: React.FC = () => {
   const { isLoading, error, checkoutPlan, clearError } = useBillingStore();
+  const { data: profile } = useGetProfile();
 
   /**
    * `activePriceId` rastrea cual boton especifico disparo la carga.
@@ -148,6 +129,83 @@ export const PricingPage: React.FC = () => {
    * no todos los botones de la pagina.
    */
   const [activePriceId, setActivePriceId] = useState<string | null>(null);
+
+  // Cálculo dinámico y escalable de los estados de cada plan basado en el plan actual del usuario
+  const dynamicPlans = useMemo<SubscriptionPlan[]>(() => {
+    const currentPlan = profile?.plan || "FREE"; // "FREE" | "BASIC" | "PRO"
+
+    return PLANS.map((plan) => {
+      const planIdUpper = plan.id.toUpperCase();
+      const isCurrent = planIdUpper === currentPlan;
+
+      // 1. Si es el plan actual del usuario
+      if (isCurrent) {
+        return {
+          ...plan,
+          isDisabled: true,
+          isCurrent: true,
+          ctaLabel: "✓ Plan actual",
+          buttonVariant: plan.id === "pro" ? "primary" : "secondary",
+          isPopular: plan.id === "pro",
+        };
+      }
+
+      // 2. Si el usuario ya tiene PRO (los demás planes son downgrades)
+      if (currentPlan === "PRO") {
+        if (plan.id === "free") {
+          return {
+            ...plan,
+            isDisabled: true,
+            isCurrent: false,
+            ctaLabel: "Plan base",
+            buttonVariant: "secondary",
+            isPopular: false,
+          };
+        }
+        return {
+          ...plan,
+          isDisabled: false,
+          isCurrent: false,
+          ctaLabel: "Cambiar a este plan",
+          buttonVariant: "outline",
+          isPopular: false,
+        };
+      }
+
+      // 3. Si el usuario tiene BASIC
+      if (currentPlan === "BASIC") {
+        if (plan.id === "free") {
+          return {
+            ...plan,
+            isDisabled: true,
+            isCurrent: false,
+            ctaLabel: "Plan base",
+            buttonVariant: "secondary",
+            isPopular: false,
+          };
+        }
+        // Este caso debe ser el plan PRO (upgrade)
+        return {
+          ...plan,
+          isDisabled: false,
+          isCurrent: false,
+          ctaLabel: "Contratar Plan Pro",
+          buttonVariant: "primary",
+          isPopular: true,
+        };
+      }
+
+      // 4. Si el usuario tiene FREE (puede adquirir BASIC o PRO)
+      return {
+        ...plan,
+        isDisabled: false,
+        isCurrent: false,
+        ctaLabel: plan.id === "basic" ? "Contratar Plan Basic" : "Contratar Plan Pro",
+        buttonVariant: plan.id === "pro" ? "primary" : "outline",
+        isPopular: plan.id === "pro",
+      };
+    });
+  }, [profile?.plan]);
 
   // Ref para hacer scroll automatico al error cuando aparece
   const errorRef = useRef<HTMLDivElement>(null);
@@ -172,7 +230,13 @@ export const PricingPage: React.FC = () => {
     };
   }, [clearError]);
 
-  const handleCheckout = (priceId: string) => {
+  const handleCheckout = (priceId: string | null) => {
+    if (!priceId) {
+      alert(
+        "Para gestionar la cancelación de tu suscripción y volver al Plan Gratis, por favor contáctanos en soporte@conciliafacil.com y te ayudaremos de inmediato."
+      );
+      return;
+    }
     setActivePriceId(priceId);
     void checkoutPlan(priceId);
   };
@@ -225,7 +289,7 @@ export const PricingPage: React.FC = () => {
           aria-label="Planes de suscripcion disponibles"
           className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3"
         >
-          {PLANS.map((plan) => (
+          {dynamicPlans.map((plan) => (
             <PriceCard
               key={plan.id}
               plan={plan}
@@ -235,6 +299,17 @@ export const PricingPage: React.FC = () => {
             />
           ))}
         </section>
+
+
+        {/* ── Características comunes a todos los planes ───────────────── */}
+        <div className="mt-12 text-center bg-slate-100/50 border border-slate-200/60 rounded-2xl p-6">
+          <p className="text-sm font-semibold text-slate-700">
+            Todos los planes incluyen:
+          </p>
+          <p className="mt-1.5 text-sm text-slate-500 max-w-3xl mx-auto leading-relaxed">
+            Cruce automático de movimientos vs XMLs, carga masiva, clasificación de excepciones, exportación a Excel e historial de sesiones.
+          </p>
+        </div>
 
         {/* ── Nota de pie — refuerza la confianza del usuario ───────────── */}
         <footer className="mt-14 text-center text-xs text-slate-400">
