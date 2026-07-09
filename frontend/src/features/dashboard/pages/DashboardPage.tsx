@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useGetProfile } from "../hooks/useGetProfile";
+import { invalidateUserProfile } from "../../settings/utils/invalidateSettingsQueries";
 import { WelcomeHeader } from "../components/WelcomeHeader";
 import { MetricsGrid } from "../components/MetricsGrid";
 import { RecentConciliationsTable } from "../components/RecentConciliationsTable";
@@ -29,7 +30,7 @@ export const DashboardPage: React.FC = () => {
   // perfil desde NestJS/Prisma, reflejando el nuevo plan en la UI.
   useEffect(() => {
     if (searchParams.get("session_id")) {
-      void queryClient.invalidateQueries({ queryKey: ["userProfile"] });
+      void invalidateUserProfile(queryClient);
       // Limpiar el parámetro de la URL sin agregar entrada al historial
       setSearchParams({}, { replace: true });
     }

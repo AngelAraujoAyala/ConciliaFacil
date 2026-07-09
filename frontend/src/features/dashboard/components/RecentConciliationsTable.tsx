@@ -11,15 +11,15 @@ import { apiClient } from "../../../api/apiClient";
 
 function TableSkeleton() {
   return (
-    <div className="divide-y divide-slate-50 animate-pulse">
+    <div className="animate-pulse divide-y divide-slate-50 dark:divide-slate-800">
       {Array.from({ length: 3 }).map((_, i) => (
         <div key={i} className="flex items-center gap-4 px-5 py-4">
-          <div className="h-3 bg-slate-200 rounded w-36" />
-          <div className="h-3 bg-slate-200 rounded w-20 ml-auto" />
-          <div className="h-3 bg-slate-200 rounded w-16" />
-          <div className="h-3 bg-slate-200 rounded w-8" />
-          <div className="h-3 bg-slate-200 rounded w-8" />
-          <div className="h-5 bg-slate-200 rounded-full w-16" />
+          <div className="h-3 w-36 rounded bg-slate-200 dark:bg-slate-700" />
+          <div className="ml-auto h-3 w-20 rounded bg-slate-200 dark:bg-slate-700" />
+          <div className="h-3 w-16 rounded bg-slate-200 dark:bg-slate-700" />
+          <div className="h-3 w-8 rounded bg-slate-200 dark:bg-slate-700" />
+          <div className="h-3 w-8 rounded bg-slate-200 dark:bg-slate-700" />
+          <div className="h-5 w-16 rounded-full bg-slate-200 dark:bg-slate-700" />
         </div>
       ))}
     </div>
@@ -28,13 +28,13 @@ function TableSkeleton() {
 
 function EmptyState({ onStart }: { onStart: () => void }) {
   return (
-    <div className="p-12 flex flex-col items-center justify-center text-center space-y-4">
-      <div className="p-4 bg-amber-50 border border-amber-100 rounded-full text-amber-400">
+    <div className="flex flex-col items-center justify-center space-y-4 p-12 text-center">
+      <div className="rounded-full border border-amber-100 bg-amber-50 p-4 text-amber-400 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-500">
         <FolderOpen className="h-10 w-10" />
       </div>
-      <div className="space-y-1 max-w-sm">
-        <h3 className="text-sm font-bold text-slate-800">Sin borradores pendientes</h3>
-        <p className="text-xs text-slate-400">
+      <div className="max-w-sm space-y-1">
+        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Sin borradores pendientes</h3>
+        <p className="text-xs text-slate-400 dark:text-slate-500">
           No tienes conciliaciones guardadas como borrador. Inicia una nueva para procesarla más tarde.
         </p>
       </div>
@@ -97,10 +97,9 @@ export const RecentConciliationsTable: React.FC<RecentConciliationsTableProps> =
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
-      {/* Encabezado con acento ámbar */}
-      <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-        <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+    <div className="ui-card-lg flex flex-col overflow-hidden">
+      <div className="ui-divider flex items-center justify-between border-b p-5">
+        <h2 className="ui-section-title flex items-center gap-2">
           <Clock className="h-5 w-5 text-amber-500" />
           <span>
             Conciliaciones Pendientes{" "}
@@ -124,7 +123,7 @@ export const RecentConciliationsTable: React.FC<RecentConciliationsTableProps> =
 
         {/* Estado de error */}
         {isError && !isLoading && (
-          <div className="p-6 text-center text-xs text-red-500 bg-red-50 border-t border-red-100">
+          <div className="ui-alert-error-inline p-6 text-center">
             Error al cargar los borradores. Verifica tu conexión con el servidor.
           </div>
         )}
@@ -138,7 +137,7 @@ export const RecentConciliationsTable: React.FC<RecentConciliationsTableProps> =
         {!isLoading && !isError && hasDrafts && (
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100">
+              <tr className="ui-table-head text-[10px]">
                 <th className="py-3 px-5">Título / Conciliación</th>
                 <th className="py-3 px-5">Creada</th>
                 <th className="py-3 px-5 text-center">Facturas (XML)</th>
@@ -148,24 +147,23 @@ export const RecentConciliationsTable: React.FC<RecentConciliationsTableProps> =
                 <th className="py-3 px-5 text-right">Acción</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50 text-xs text-slate-600">
+            <tbody className="ui-table-body text-xs text-slate-600 dark:text-slate-400">
               {drafts.map((draft) => (
                 <tr
                   key={draft.id}
                   onClick={() => onSelect(draft.id)}
-                  className={`transition-colors cursor-pointer ${
+                  className={`cursor-pointer transition-colors ${
                     selectedId === draft.id
-                      ? "bg-indigo-50/70 border-l-4 border-l-indigo-500"
-                      : "hover:bg-amber-50/30"
+                      ? "border-l-4 border-l-indigo-500 bg-indigo-50/70 dark:border-l-indigo-400 dark:bg-indigo-950/40"
+                      : "hover:bg-amber-50/30 dark:hover:bg-amber-950/20"
                   }`}
                 >
-                  {/* Título de la conciliación — viene directo del campo `title` en la tabla */}
-                  <td className="py-3.5 px-5 font-medium text-slate-900 truncate max-w-[220px]">
+                  <td className="max-w-[220px] truncate px-5 py-3.5 font-medium text-slate-900 dark:text-slate-100">
                     {draft.title || "Sin título"}
                   </td>
 
                   {/* Fecha formateada del campo `createdAt` */}
-                  <td className="py-3.5 px-5 text-slate-400 whitespace-nowrap">
+                  <td className="whitespace-nowrap px-5 py-3.5 text-slate-400 dark:text-slate-500">
                     {new Date(draft.createdAt).toLocaleDateString("es-MX", {
                       day: "2-digit",
                       month: "short",
@@ -174,22 +172,23 @@ export const RecentConciliationsTable: React.FC<RecentConciliationsTableProps> =
                   </td>
 
                   {/* Conteos de escalar — campos directos en la tabla Prisma */}
-                  <td className="py-3.5 px-5 text-center font-semibold text-slate-700">
+                  <td className="px-5 py-3.5 text-center font-semibold text-slate-700 dark:text-slate-300">
                     {draft.totalInvoices}
                   </td>
-                  <td className="py-3.5 px-5 text-center font-semibold text-slate-700">
+                  <td className="px-5 py-3.5 text-center font-semibold text-slate-700 dark:text-slate-300">
                     {draft.totalBankMovements}
                   </td>
 
                   {/* Tasa de éxito como porcentaje */}
                   <td className="py-3.5 px-5 text-center">
                     <span
-                      className={`font-bold ${draft.successRate >= 80
-                          ? "text-emerald-600"
+                      className={`font-bold ${
+                        draft.successRate >= 80
+                          ? "text-emerald-600 dark:text-emerald-400"
                           : draft.successRate >= 50
-                            ? "text-amber-600"
-                            : "text-red-500"
-                        }`}
+                            ? "text-amber-600 dark:text-amber-400"
+                            : "text-red-500 dark:text-red-400"
+                      }`}
                     >
                       {draft.successRate}%
                     </span>
@@ -197,7 +196,7 @@ export const RecentConciliationsTable: React.FC<RecentConciliationsTableProps> =
 
                   {/* Badge de estatus — siempre "Borrador" en este filtro */}
                   <td className="py-3.5 px-5 text-center">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
+                    <span className="ui-badge-draft gap-1 rounded-full">
                       <Loader2 className="h-2.5 w-2.5 animate-spin" />
                       Borrador
                     </span>

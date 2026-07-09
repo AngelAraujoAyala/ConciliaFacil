@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Props
@@ -59,8 +59,8 @@ export const FeatureBullet: React.FC<FeatureBulletProps> = ({
       <span
         className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
           isIncluded
-            ? "bg-indigo-100 text-indigo-600"
-            : "bg-slate-100 text-slate-400"
+            ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400"
+            : "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500"
         }`}
         aria-label={isIncluded ? "Incluido" : "No incluido"}
       >
@@ -74,7 +74,7 @@ export const FeatureBullet: React.FC<FeatureBulletProps> = ({
       {/* Texto de la caracteristica */}
       <span
         className={`text-sm leading-relaxed ${
-          isIncluded ? "text-slate-700" : "text-slate-400 line-through"
+          isIncluded ? "text-slate-700 dark:text-slate-300" : "text-slate-400 dark:text-slate-500 line-through"
         }`}
       >
         {text}

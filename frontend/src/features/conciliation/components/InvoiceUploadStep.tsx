@@ -67,7 +67,7 @@ export default function InvoiceUploadStep() {
       )}
 
       {hasMixedRfcsError && (
-        <div className="bg-amber-50 border border-amber-300 text-amber-900 px-4 py-3 rounded-xl text-sm flex justify-between items-start gap-3">
+        <div className="bg-amber-50 border border-amber-300 text-amber-900 dark:bg-amber-950/40 dark:border-amber-900/50 dark:text-amber-300 px-4 py-3 rounded-xl text-sm flex justify-between items-start gap-3">
           <div>
             <p className="font-semibold">RFCs mixtos detectados</p>
             <p className="mt-1">
@@ -85,7 +85,7 @@ export default function InvoiceUploadStep() {
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex justify-between items-center">
+        <div className="bg-red-50 border border-red-200 text-red-700 dark:bg-red-950/40 dark:border-red-900/50 dark:text-red-300 px-4 py-3 rounded-xl text-sm flex justify-between items-center">
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
@@ -100,13 +100,13 @@ export default function InvoiceUploadStep() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-gray-700">
+              <h2 className="text-lg font-semibold text-gray-700 dark:text-slate-350">
                 Facturas Listas ({invoices.length})
               </h2>
               {rfcEmpresaActual && (
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                   RFC empresa detectado:{" "}
-                  <span className="font-mono font-medium text-gray-700">
+                  <span className="font-mono font-medium text-gray-700 dark:text-slate-300">
                     {rfcEmpresaActual}
                   </span>
                 </p>
@@ -120,17 +120,17 @@ export default function InvoiceUploadStep() {
             </button>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100 shadow-sm max-h-87.5 overflow-y-auto custom-scrollbar">
+          <div className="bg-white border border-gray-200 divide-y divide-gray-100 dark:bg-slate-900 dark:border-slate-800 dark:divide-slate-800 rounded-xl shadow-sm max-h-87.5 overflow-y-auto custom-scrollbar">
             {invoices.map((inv) => (
               <div
                 key={inv.id}
-                className="p-3 flex items-center justify-between hover:bg-gray-50"
+                className="p-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-800/50"
               >
                 <div className="flex flex-col min-w-0 pr-2">
-                  <span className="text-xs font-mono text-gray-400">
+                  <span className="text-xs font-mono text-gray-400 dark:text-slate-500">
                     {inv.date} • UUID: ...{inv.uuid.substring(24)}
                   </span>
-                  <span className="text-sm font-medium text-gray-800 truncate">
+                  <span className="text-sm font-medium text-gray-800 dark:text-slate-200 truncate">
                     {inv.type === "INGRESO"
                       ? `Cliente: ${inv.nameReceptor}`
                       : `Proveedor: ${inv.nameEmisor}`}
@@ -138,7 +138,7 @@ export default function InvoiceUploadStep() {
                 </div>
                 <span
                   className={`text-sm font-bold shrink-0 ${
-                    inv.type === "INGRESO" ? "text-green-600" : "text-red-600"
+                    inv.type === "INGRESO" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
                   }`}
                 >
                   {formatCurrency(inv.total)}
@@ -150,7 +150,7 @@ export default function InvoiceUploadStep() {
           <div className="flex justify-between items-center pt-2">
             <button
               onClick={() => setCurrentStep("BANK_UPLOAD")}
-              className="text-sm text-gray-500 hover:text-gray-700 font-medium"
+              className="text-sm text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200 font-medium"
             >
               ⬅ Volver a revisar banco
             </button>

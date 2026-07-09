@@ -7,6 +7,7 @@ import ConciliationPage from "../features/conciliation/pages/ConciliationPage";
 import { HistoryPage } from "../features/history/pages/HistoryPage";
 import { SupportPage } from "../pages/SupportPage";
 import { PricingPage } from "../features/billing/pages/PricingPage";
+import { SettingsLayout } from "../features/settings/components/SettingsLayout";
 
 import RegisterPage from "../features/auth/pages/RegisterPage";
 import { LoginPage } from "../features/auth/pages/LoginPage";
@@ -74,11 +75,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "configuracion",
-        element: (
-          <div className="p-6 bg-white rounded-xl shadow-sm border">
-            Ajustes de ConciliaFácil (Próximamente)
-          </div>
-        ),
+        element: <Navigate to="/home/configuracion/perfil" replace />,
+      },
+      {
+        path: "configuracion/:tab",
+        element: <SettingsLayout />,
       },
       {
         path: "soporte",

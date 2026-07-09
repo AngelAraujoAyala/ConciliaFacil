@@ -6,7 +6,7 @@ export default function GoogleButton() {
     return (
         <div className="w-full">
             {error && (
-                <div className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-600 border border-red-200">
+                <div className="mb-3 rounded-lg bg-red-50 dark:bg-red-950/40 p-3 text-sm text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900/50">
                     {error}
                 </div>
             )}
@@ -15,7 +15,7 @@ export default function GoogleButton() {
                 type="button"
                 onClick={loginWithGoogle}
                 disabled={isPending}
-                className="w-full flex justify-center items-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full flex justify-center items-center gap-3 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-slate-200 shadow-sm transition hover:bg-gray-50 dark:hover:bg-slate-700 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
             >
                 {isPending ? (
                     <svg className="animate-spin h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24">
@@ -36,10 +36,10 @@ export default function GoogleButton() {
             {/* Divisor estético elegante */}
             <div className="relative my-5">
                 <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-200"></div>
+                    <div className="w-full border-t border-gray-200 dark:border-slate-700"></div>
                 </div>
                 <div className="relative flex justify-center text-xs">
-                    <span className="bg-white px-3 text-gray-400 uppercase font-medium tracking-wider">
+                    <span className="bg-white dark:bg-slate-900 px-3 text-gray-400 dark:text-slate-500 uppercase font-medium tracking-wider">
                         O continúa con correo
                     </span>
                 </div>

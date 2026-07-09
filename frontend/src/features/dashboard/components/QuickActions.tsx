@@ -20,20 +20,15 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ selectedConciliation
     if (!selectedConciliationId || !user?.id) return;
     try {
       setIsLoading(true);
-      // 1. Cargar el JSONB completo del borrador desde el backend
       const { data } = await apiClient.get<ConciliationDetail>(
         `/reconciliations/${selectedConciliationId}`,
         { params: { userId: user.id } }
       );
-      
-      // 2. Hidratar el store global con el snapshot
+
       loadSnapshot(data);
-      
-      // 3. Redirigir a la pantalla interactiva
       navigate("/home/nueva-conciliacion");
     } catch (error) {
       console.error("Error al reanudar la conciliación:", error);
-      // Aquí se podría mostrar un toast de error
     } finally {
       setIsLoading(false);
     }
@@ -45,55 +40,58 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ selectedConciliation
       description: "Ejecutar cruce M:N automático o manual.",
       icon: <PlusCircle className="h-5 w-5" />,
       color: "bg-indigo-600 hover:bg-indigo-700 text-white",
+      descColor: "text-indigo-100",
       onClick: () => navigate("/home/nueva-conciliacion"),
     },
     {
       title: "Soporte y Ayuda",
       description: "Centro de ayuda y plantillas de Excel.",
       icon: <HelpCircle className="h-5 w-5" />,
-      color: "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50",
+      color:
+        "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700",
+      descColor: "text-slate-400 dark:text-slate-500",
       onClick: () => navigate("/home/soporte"),
     },
   ];
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4 flex flex-col h-full">
-      <h2 className="text-base font-bold text-slate-900">
-        Acciones Rápidas
-      </h2>
+    <div className="ui-card-lg flex h-full flex-col space-y-4 p-6">
+      <h2 className="ui-section-title">Acciones Rápidas</h2>
       <div className="grid grid-cols-1 gap-3">
         {actions.map((act, index) => (
           <button
             key={index}
             onClick={act.onClick}
-            className={`w-full text-left p-4 rounded-xl transition-all duration-300 flex items-start gap-4 group cursor-pointer ${act.color}`}
+            className={`group flex w-full cursor-pointer items-start gap-4 rounded-xl p-4 text-left transition-all duration-300 ${act.color}`}
           >
-            <div className="mt-0.5 group-hover:scale-105 transition-transform duration-300">
+            <div className="mt-0.5 transition-transform duration-300 group-hover:scale-105">
               {act.icon}
             </div>
             <div className="space-y-0.5">
               <h3 className="text-sm font-bold">{act.title}</h3>
-              <p className={`text-xs ${act.color.includes("indigo") ? "text-indigo-100" : "text-slate-400"}`}>
-                {act.description}
-              </p>
+              <p className={`text-xs ${act.descColor}`}>{act.description}</p>
             </div>
           </button>
         ))}
 
-        <div className="pt-4 border-t border-slate-100 mt-2">
+        <div className="ui-divider mt-2 border-t pt-4">
           <button
             onClick={handleResume}
             disabled={!selectedConciliationId || isLoading}
-            className={`w-full text-left p-4 rounded-xl transition-all duration-300 flex items-center justify-between group
-              ${
-                selectedConciliationId
-                  ? "bg-amber-50 border border-amber-200 text-amber-700 cursor-pointer shadow-sm hover:bg-amber-100"
-                  : "bg-slate-50 border border-slate-100 text-slate-400 opacity-60 cursor-not-allowed"
-              }
-            `}
+            className={`group flex w-full items-center justify-between rounded-xl p-4 text-left transition-all duration-300 ${
+              selectedConciliationId
+                ? "cursor-pointer border border-amber-200 bg-amber-50 text-amber-700 shadow-sm hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-950/60"
+                : "cursor-not-allowed border border-slate-100 bg-slate-50 text-slate-400 opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500"
+            }`}
           >
             <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${selectedConciliationId ? 'bg-amber-100 text-amber-600' : 'bg-slate-200 text-slate-400'}`}>
+              <div
+                className={`rounded-lg p-2 ${
+                  selectedConciliationId
+                    ? "bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400"
+                    : "bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500"
+                }`}
+              >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (

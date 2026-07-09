@@ -4,6 +4,7 @@ import { User, Menu, LogOut, RefreshCw } from "lucide-react";
 import { useSidebar } from "./SidebarContext";
 import { useAuthStore } from "../store/authStore"; // Ajusta la ruta a tu store de Zustand
 import { supabase } from "../api/supabase";
+import { useDisplayName } from "../hooks/useDisplayName";
 
 export default function Navbar() {
   const { toggleSidebar } = useSidebar();
@@ -18,7 +19,7 @@ export default function Navbar() {
 
   // Extraer el nombre/identificador del usuario de forma segura
   const userEmail = user?.email || "Usuario Concilia";
-  const displayName = user?.user_metadata?.full_name || userEmail.split("@")[0];
+  const displayName = useDisplayName();
 
   // Cerrar el dropdown automáticamente si el usuario hace clic fuera de él
   useEffect(() => {
@@ -54,13 +55,13 @@ export default function Navbar() {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 fixed top-0 right-0 left-0 z-40 px-6 flex items-center shadow-sm">
+    <header className="h-16 bg-white border-b border-slate-200 fixed top-0 right-0 left-0 z-40 px-6 flex items-center shadow-sm dark:bg-slate-900 dark:border-slate-800">
       {/* Botón de Hamburguesa para el Sidebar */}
       <button
         onClick={toggleSidebar}
-        className="mr-4 p-1.5 rounded-lg hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-300"
+        className="mr-4 rounded-lg p-1.5 transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:hover:bg-slate-800 dark:focus:ring-slate-600"
       >
-        <Menu size={24} className="text-slate-600" />
+        <Menu size={24} className="text-slate-600 dark:text-slate-300" />
       </button>
 
       <div className="flex-1"></div>
@@ -69,7 +70,7 @@ export default function Navbar() {
       <div className="flex items-center gap-3 relative" ref={dropdownRef}>
         {/* Información del Usuario (Oculta en pantallas muy pequeñas) */}
         <div className="text-right hidden sm:block">
-          <p className="text-sm font-semibold text-slate-700 capitalize">
+          <p className="text-sm font-semibold text-slate-700 capitalize dark:text-slate-200">
             {displayName}
           </p>
           <p className="text-xs text-slate-400 truncate max-w-45">
@@ -89,30 +90,27 @@ export default function Navbar() {
 
         {/* Menú Desplegable Flotante */}
         {isDropdownOpen && (
-          <div className="absolute right-0 top-12 w-56 bg-white border border-slate-200 rounded-xl shadow-lg py-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-            {/* Encabezado del menú móvil (Solo visible si el texto principal se ocultó) */}
-            <div className="px-4 py-2 border-b border-slate-100 sm:hidden">
-              <p className="text-sm font-semibold text-slate-700 capitalize truncate">
+          <div className="absolute right-0 top-12 z-50 w-56 animate-in fade-in slide-in-from-top-1 rounded-xl border border-slate-200 bg-white py-2 shadow-lg duration-150 dark:border-slate-700 dark:bg-slate-900">
+            <div className="ui-divider border-b px-4 py-2 sm:hidden">
+              <p className="truncate text-sm font-semibold capitalize text-slate-700 dark:text-slate-200">
                 {displayName}
               </p>
-              <p className="text-xs text-slate-400 truncate">{userEmail}</p>
+              <p className="truncate text-xs text-slate-400">{userEmail}</p>
             </div>
 
-            {/* Opción: Cambiar Cuenta */}
             <button
               onClick={handleSwitchAccount}
-              className="w-full px-4 py-2 text-left text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-slate-600 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
             >
-              <RefreshCw size={16} className="text-slate-400" />
+              <RefreshCw size={16} className="text-slate-400 dark:text-slate-500" />
               <span>Cambiar cuenta</span>
             </button>
 
-            <hr className="my-1 border-slate-100" />
+            <hr className="ui-divider my-1" />
 
-            {/* Opción: Cerrar Sesión */}
             <button
               onClick={handleLogout}
-              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors font-medium"
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
             >
               <LogOut size={16} className="text-red-500" />
               <span>Cerrar sesión</span>

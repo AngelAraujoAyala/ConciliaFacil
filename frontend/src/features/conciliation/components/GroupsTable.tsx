@@ -80,7 +80,7 @@ export default function GroupsTable({
 
   if (filtered.length === 0) {
     return (
-      <div className="p-8 text-center text-sm text-gray-400">
+      <div className="p-8 text-center text-sm text-gray-400 dark:text-slate-500">
         No hay grupos de conciliación en esta categoría.
       </div>
     );
@@ -89,7 +89,7 @@ export default function GroupsTable({
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left border-collapse text-xs min-w-200">
-        <thead className="bg-gray-50 text-[11px] text-gray-400 font-bold uppercase">
+        <thead className="bg-gray-50 dark:bg-slate-800/80 text-[11px] text-gray-400 dark:text-slate-400 font-bold uppercase">
           <tr>
             <th className="p-4 w-[30%]">🏦 Movimientos</th>
             <th className="p-4 w-[30%]">📁 Facturas</th>
@@ -98,7 +98,7 @@ export default function GroupsTable({
             <th className="p-4 w-[12%] text-center">Acciones</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-50">
+        <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
           {filtered.map((group) => {
             const groupMovements = group.bankMovementIds
               .map((id) => movementMap.get(id))
@@ -110,30 +110,30 @@ export default function GroupsTable({
             return (
               <tr
                 key={group.id}
-                className="hover:bg-gray-50/40 transition-colors align-top"
+                className="hover:bg-gray-50/40 dark:hover:bg-slate-800/20 transition-colors align-top"
               >
                 <td className="p-4 space-y-2">
                   {groupMovements.map((bm) => (
                     <div key={bm.id} className="space-y-0.5">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-gray-400 text-[10px]">
+                        <span className="font-mono text-gray-400 dark:text-slate-550 text-[10px]">
                           {bm.date}
                         </span>
                         <span
-                          className={`text-[9px] font-bold px-1 py-0.5 rounded ${bm.type === "INGRESO" ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50"}`}
+                          className={`text-[9px] font-bold px-1 py-0.5 rounded ${bm.type === "INGRESO" ? "text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-950/30" : "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950/30"}`}
                         >
                           {bm.type}
                         </span>
                       </div>
-                      <p className="font-medium text-gray-800 truncate max-w-52">
+                      <p className="font-medium text-gray-800 dark:text-slate-200 truncate max-w-52">
                         {bm.description}
                       </p>
-                      <p className="font-bold text-gray-900">
+                      <p className="font-bold text-gray-900 dark:text-slate-100">
                         {formatCurrency(bm.amount)}
                       </p>
                     </div>
                   ))}
-                  <p className="text-[10px] text-gray-400 font-semibold pt-1 border-t border-gray-100">
+                  <p className="text-[10px] text-gray-400 dark:text-slate-500 font-semibold pt-1 border-t border-gray-100 dark:border-slate-800/60">
                     Σ {formatCurrency(group.bankTotal)}
                   </p>
                 </td>
@@ -142,21 +142,21 @@ export default function GroupsTable({
                   {groupInvoices.map((inv) => (
                     <div key={inv.id} className="space-y-0.5">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-gray-400 text-[10px]">
+                        <span className="font-mono text-gray-400 dark:text-slate-550 text-[10px]">
                           {inv.date}
                         </span>
                       </div>
-                      <p className="font-medium text-gray-800 truncate max-w-52">
+                      <p className="font-medium text-gray-800 dark:text-slate-200 truncate max-w-52">
                         {inv.type === "INGRESO"
                           ? inv.nameReceptor
                           : inv.nameEmisor}
                       </p>
-                      <p className="font-bold text-gray-900">
+                      <p className="font-bold text-gray-900 dark:text-slate-100">
                         {formatCurrency(inv.total)}
                       </p>
                     </div>
                   ))}
-                  <p className="text-[10px] text-gray-400 font-semibold pt-1 border-t border-gray-100">
+                  <p className="text-[10px] text-gray-400 dark:text-slate-500 font-semibold pt-1 border-t border-gray-100 dark:border-slate-800/60">
                     Σ {formatCurrency(group.invoiceTotal)}
                   </p>
                 </td>
@@ -165,12 +165,12 @@ export default function GroupsTable({
                   <div className="flex flex-col items-center gap-1.5">
                     <StatusBadge status={group.status} />
                     {group.source === "MANUAL" && (
-                      <span className="text-[9px] text-indigo-500 font-semibold">
+                      <span className="text-[9px] text-indigo-500 dark:text-indigo-400 font-semibold">
                         Manual
                       </span>
                     )}
                     {group.observations && (
-                      <p className="text-[9px] text-gray-400 italic max-w-32 text-center leading-tight">
+                      <p className="text-[9px] text-gray-400 dark:text-slate-500 italic max-w-32 text-center leading-tight">
                         {group.observations}
                       </p>
                     )}
@@ -182,8 +182,8 @@ export default function GroupsTable({
                     className={
                       group.status === "TOTAL_MATCH" ||
                       group.status === "MANUAL_MATCH"
-                        ? "text-emerald-600"
-                        : "text-amber-600"
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-amber-600 dark:text-amber-400"
                     }
                   >
                     {formatCurrency(group.amountDelta)}
@@ -209,7 +209,7 @@ export default function GroupsTable({
                         onUnmatch(group.id);
                       }
                     }}
-                    className="block w-full text-[9px] bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold px-2 py-1 rounded-md border border-rose-100 transition-colors cursor-pointer"
+                    className="block w-full text-[9px] bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold px-2 py-1 rounded-md border border-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/30 dark:text-rose-300 dark:border-rose-900/50 transition-colors cursor-pointer"
                   >
                     ↩ Deshacer
                   </button>

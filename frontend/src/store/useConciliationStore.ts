@@ -169,7 +169,7 @@ export const useConciliationStore = create<ConciliationState>()(
           return { success: false, error: MIXED_RFCS_ERROR_MESSAGE };
         }
 
-        const { rfcEmpresaActual, invoices: existingInvoices } = get();
+        const { rfcEmpresaActual } = get();
 
         if (
           append &&

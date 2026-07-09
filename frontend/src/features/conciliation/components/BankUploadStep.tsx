@@ -58,7 +58,7 @@ export default function BankUploadStep({
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex justify-between items-center">
+        <div className="bg-red-50 border border-red-200 text-red-700 dark:bg-red-950/40 dark:border-red-900/50 dark:text-red-300 px-4 py-3 rounded-xl text-sm flex justify-between items-center">
           <span>{error}</span>
           <button onClick={() => setError(null)} className="text-xs font-bold underline ml-2">
             Cerrar
@@ -69,7 +69,7 @@ export default function BankUploadStep({
       {movements.length > 0 && !isLoading && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-700">
+            <h2 className="text-lg font-semibold text-gray-700 dark:text-slate-300">
               Movimientos Detectados ({movements.length})
             </h2>
             <button
@@ -80,16 +80,16 @@ export default function BankUploadStep({
             </button>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100 shadow-sm max-h-87.5 overflow-y-auto custom-scrollbar">
+          <div className="bg-white border border-gray-200 divide-y divide-gray-100 dark:bg-slate-900 dark:border-slate-800 dark:divide-slate-800 rounded-xl shadow-sm max-h-87.5 overflow-y-auto custom-scrollbar">
             {movements.map((m) => (
-              <div key={m.id} className="p-3 flex items-center justify-between hover:bg-gray-50">
+              <div key={m.id} className="p-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-800/50">
                 <div className="flex flex-col min-w-0 pr-2">
-                  <span className="text-xs font-mono text-gray-400">{m.date}</span>
-                  <span className="text-sm font-medium text-gray-800 truncate">{m.description}</span>
+                  <span className="text-xs font-mono text-gray-400 dark:text-slate-500">{m.date}</span>
+                  <span className="text-sm font-medium text-gray-800 dark:text-slate-200 truncate">{m.description}</span>
                 </div>
                 <span
                   className={`text-sm font-bold shrink-0 ${
-                    m.type === 'INGRESO' ? 'text-green-600' : 'text-red-600'
+                    m.type === 'INGRESO' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                   }`}
                 >
                   {m.type === 'INGRESO' ? '+' : '-'} {formatCurrency(m.amount)}

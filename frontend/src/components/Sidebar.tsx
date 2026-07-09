@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import {
   Menu,
   X,
@@ -19,8 +19,9 @@ interface MenuItem {
 }
 
 export default function Sidebar() {
-  // Usa el hook para obtener el estado y la función de toggle
   const { isExpanded, toggleSidebar } = useSidebar();
+  const location = useLocation();
+  const isSettingsActive = location.pathname.startsWith("/home/configuracion");
 
   const menuItems: MenuItem[] = [
     { icon: Home, label: "Inicio", to: "/home" },
@@ -91,10 +92,10 @@ export default function Sidebar() {
       <div className="p-2 border-t border-slate-800 space-y-1">
         {/* Link de Configuración */}
         <NavLink
-          to="/home/configuracion"
-          className={({ isActive }) => `
+          to="/home/configuracion/perfil"
+          className={() => `
             flex items-center gap-4 px-3 py-3 rounded-lg hover:bg-slate-800 hover:text-white transition-all
-            ${isActive
+            ${isSettingsActive
               ? "bg-emerald-500/10 text-emerald-400 font-medium border-l-4 border-emerald-400 rounded-l-none pl-2"
               : "text-slate-400"
             }

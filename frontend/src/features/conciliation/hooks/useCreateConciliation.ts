@@ -3,6 +3,7 @@ import { useConciliationStore } from "../../../store/useConciliationStore";
 import type { CreateConciliationDto } from "../types/conciliation-payload";
 import { toast } from "sonner";
 import { apiClient } from "../../../api/apiClient";
+import { invalidateUserProfile } from "../../settings/utils/invalidateSettingsQueries";
 
 const createConciliationRequest = async (
   payload: CreateConciliationDto,
@@ -38,7 +39,7 @@ export function useCreateConciliation() {
 
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["conciliations"] });
-      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
+      invalidateUserProfile(queryClient);
 
       if (variables.status === "COMPLETED") {
         toast.success("¡Excelente!", {

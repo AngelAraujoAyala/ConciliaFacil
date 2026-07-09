@@ -50,12 +50,12 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
   };
 
   return (
-    <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl border border-gray-100">
+    <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 p-8 shadow-xl border border-gray-100 dark:border-slate-800">
       <div className="mb-6 text-center">
-        <h2 className="text-2xl font-bold tracking-tight text-gray-950">
+        <h2 className="text-2xl font-bold tracking-tight text-gray-950 dark:text-slate-100">
           Crea tu cuenta en ConciliaFácil
         </h2>
-        <p className="mt-2 text-sm text-gray-500">
+        <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">
           Automatiza tus conciliaciones bancarias en segundos
         </p>
       </div>
@@ -65,13 +65,13 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Manejo de errores visuales (Tanto locales como del servidor/Supabase) */}
         {(validationError || error) && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 border border-red-200">
+          <div className="rounded-lg bg-red-50 dark:bg-red-950/40 p-3 text-sm text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900/50">
             {validationError || error?.message}
           </div>
         )}
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
             Correo Electrónico
           </label>
           <input
@@ -80,13 +80,13 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
             type="email"
             autoComplete="email"
             disabled={isPending}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 shadow-sm transition focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600 disabled:bg-gray-50 disabled:text-gray-400"
+            className="w-full rounded-lg border border-gray-300 dark:border-slate-700 px-3 py-2 text-gray-900 dark:text-slate-100 bg-white dark:bg-slate-800 shadow-sm transition focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600 placeholder:text-gray-400 dark:placeholder:text-slate-500 disabled:bg-gray-50 dark:disabled:bg-slate-800/50 disabled:text-gray-400"
             placeholder="contador@empresa.com"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
             Contraseña
           </label>
           <input
@@ -94,13 +94,13 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
             name="password"
             type="password"
             disabled={isPending}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 shadow-sm transition focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600 disabled:bg-gray-50 disabled:text-gray-400"
+            className="w-full rounded-lg border border-gray-300 dark:border-slate-700 px-3 py-2 text-gray-900 dark:text-slate-100 bg-white dark:bg-slate-800 shadow-sm transition focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600 placeholder:text-gray-400 dark:placeholder:text-slate-500 disabled:bg-gray-50 dark:disabled:bg-slate-800/50 disabled:text-gray-400"
             placeholder="••••••••"
           />
         </div>
 
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
             Confirmar Contraseña
           </label>
           <input
@@ -108,7 +108,7 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
             name="confirmPassword"
             type="password"
             disabled={isPending}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 shadow-sm transition focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600 disabled:bg-gray-50 disabled:text-gray-400"
+            className="w-full rounded-lg border border-gray-300 dark:border-slate-700 px-3 py-2 text-gray-900 dark:text-slate-100 bg-white dark:bg-slate-800 shadow-sm transition focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600 placeholder:text-gray-400 dark:placeholder:text-slate-500 disabled:bg-gray-50 dark:disabled:bg-slate-800/50 disabled:text-gray-400"
             placeholder="••••••••"
           />
         </div>

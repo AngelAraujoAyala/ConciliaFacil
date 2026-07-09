@@ -5,23 +5,23 @@ import { useModalStore } from "../../store/modalStore";
 
 const TYPE_CONFIG = {
   success: {
-    icon: <CheckCircle2 className="h-6 w-6 text-emerald-600" />,
-    iconBg: "bg-emerald-50 border-emerald-100",
+    icon: <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />,
+    iconBg: "ui-modal-icon-success",
     confirmBtn: "bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500",
   },
   danger: {
-    icon: <AlertTriangle className="h-6 w-6 text-rose-600" />,
-    iconBg: "bg-rose-50 border-rose-100",
+    icon: <AlertTriangle className="h-6 w-6 text-rose-600 dark:text-rose-400" />,
+    iconBg: "ui-modal-icon-danger",
     confirmBtn: "bg-rose-600 hover:bg-rose-700 focus:ring-rose-500",
   },
   warning: {
-    icon: <AlertCircle className="h-6 w-6 text-amber-600" />,
-    iconBg: "bg-amber-50 border-amber-100",
+    icon: <AlertCircle className="h-6 w-6 text-amber-600 dark:text-amber-400" />,
+    iconBg: "ui-modal-icon-warning",
     confirmBtn: "bg-amber-600 hover:bg-amber-700 focus:ring-amber-500",
   },
   info: {
-    icon: <Info className="h-6 w-6 text-blue-600" />,
-    iconBg: "bg-blue-50 border-blue-100",
+    icon: <Info className="h-6 w-6 text-blue-600 dark:text-blue-400" />,
+    iconBg: "ui-modal-icon-info",
     confirmBtn: "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500",
   },
 };
@@ -90,17 +90,17 @@ export const GlobalModal: React.FC = () => {
               leaveFrom="opacity-100 translate-y-0 sm:scale-100"
               leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
             >
-              <DialogPanel className="relative transform overflow-hidden rounded-2xl bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:p-6 border border-slate-100">
+              <DialogPanel className="ui-modal-panel">
                 <div className="sm:flex sm:items-start">
-                  <div className={`mx-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border ${config.iconBg} sm:mx-0 sm:h-10 sm:w-10`}>
+                  <div className={`mx-auto flex h-12 w-12 shrink-0 items-center justify-center sm:mx-0 sm:h-10 sm:w-10 ${config.iconBg}`}>
                     {config.icon}
                   </div>
                   <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
-                    <DialogTitle as="h3" className="text-base font-bold leading-6 text-slate-900">
+                    <DialogTitle as="h3" className="text-base font-bold leading-6 text-slate-900 dark:text-slate-100">
                       {title}
                     </DialogTitle>
                     <div className="mt-2">
-                      <p className="text-xs text-slate-500 leading-relaxed">
+                      <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                         {message}
                       </p>
                     </div>
@@ -123,7 +123,7 @@ export const GlobalModal: React.FC = () => {
                       type="button"
                       onClick={handleCancel}
                       disabled={isLoading}
-                      className="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-xs ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50 transition-all cursor-pointer sm:mt-0 sm:w-auto"
+                      className="ui-modal-cancel"
                     >
                       Cancelar
                     </button>

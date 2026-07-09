@@ -1,0 +1,415 @@
+================================================================================
+  PLAN DE IMPLEMENTACION SENIOR - SETTINGS FUNCIONAL
+  Proyecto: ConciliaFacil
+  Fecha: 2026-07-08
+================================================================================
+
+OBJETIVO
+--------
+Hacer funcional el apartado completo de Settings (/home/configuracion), con
+persistencia real, sincronizacion entre Supabase Auth y backend Nest/Prisma,
+y flujos de billing, exportacion y eliminacion de cuenta.
+
+
+================================================================================
+1. ESTADO ACTUAL (DIAGNOSTICO)
+================================================================================
+
+Tab              | Estado actual | Persistencia real
+-----------------|---------------|--------------------------------------------------
+Perfil           | ~70%          | Supabase Auth (full_name, phone en store sin UI)
+Facturacion      | ~50%          | GET /users/me (lectura); portal Stripe hardcodeado
+Seguridad        | ~80%          | Supabase Auth (solo usuarios email/password)
+Preferencias     | ~10%          | Solo Zustand en memoria (se pierde al recargar)
+Zona de peligro  | ~15%          | Export stub; RPC delete_user_account inexistente
+
+Conclusion: la UI esta lista. Falta cerrar persistencia, sincronizacion y
+flujos criticos de billing/export/delete.
+
+
+================================================================================
+2. PRINCIPIOS DE ARQUITECTURA
+================================================================================
+
+2.1 Separar identidad vs datos de negocio
+    - Supabase Auth: email, contraseña, user_metadata (nombre, telefono).
+    - Nest + Prisma: plan, uso, empresas, conciliaciones, preferencias.
+
+2.2 Una fuente de verdad por dato
+    - No duplicar full_name en Prisma salvo necesidad de reportes offline.
+    - Preferencias -> tabla/columna en BD, no solo Zustand.
+
+2.3 React Query para datos remotos; Zustand para UI state
+    - useGetProfile ya existe -> extender con mutations.
+    - useSettingsStore -> tab activa, drafts locales, feedback transitorio.
+
+2.4 Settings con URL
+    - /home/configuracion/:tab para deep links, back/forward y compartir.
+
+
+================================================================================
+3. FASES DE IMPLEMENTACION (PASO A PASO)
+================================================================================
+
+
+--------------------------------------------------------------------------------
+FASE 0 - FUNDAMENTOS (1-2 dias)
+Desbloquea todo lo demas
+--------------------------------------------------------------------------------
+
+Paso 0.1 - Tipos compartidos
+  - Alinear UserProfile en frontend con GET /users/me.
+  - Incluir campos Stripe: subscriptionStatus, currentPeriodEnd, etc.
+  - Archivos: frontend/src/types, useGetProfile.ts
+
+Paso 0.2 - Hooks de settings
+  - Crear:
+      useUpdateProfile
+      useUpdatePreferences
+      useBillingPortal
+      useExportData
+      useDeleteAccount
+  - Ubicacion sugerida: frontend/src/features/settings/hooks/
+
+Paso 0.3 - Rutas por tab
+  - Cambiar ruta a /home/configuracion/:tab?
+  - SettingsLayout lee :tab de URL; fallback "perfil".
+  - Archivo: frontend/src/routes/appRoutes.tsx
+
+Paso 0.4 - Feedback unificado
+  - Toasts con sonner para exito/error.
+  - Estados loading/error consistentes en hooks o store.
+
+Paso 0.5 - Invalidacion de cache
+  - Tras cambios de plan/perfil:
+      queryClient.invalidateQueries(['userProfile'])
+
+Criterio de done Fase 0:
+  [ ] Navegacion por URL funciona
+  [ ] Tipos sin any
+  [ ] Patron hook reutilizable definido
+
+
+--------------------------------------------------------------------------------
+FASE 1 - PERFIL (1 dia)
+Completar lo que ya esta a medias
+--------------------------------------------------------------------------------
+
+Paso 1.1 - Mejorar nombre/apellido
+  - Guardar first_name + last_name en user_metadata de Supabase.
+  - O un solo full_name bien formado (evitar split fragil).
+
+Paso 1.2 - Refrescar sesion tras guardar
+  - Llamar supabase.auth.refreshSession() despues de updateUser.
+  - Actualizar authStore con el usuario refrescado.
+
+Paso 1.3 - Telefono (decidir)
+  - Opcion A: agregar input de telefono en ProfileTab.
+  - Opcion B: eliminar phone del store si no aplica al producto.
+
+Paso 1.4 - Validar isDirty
+  - Confirmar que values del form no reseteen dirty incorrectamente.
+
+Paso 1.5 - Sincronizar UI global
+  - Actualizar nombre en sidebar/header si se muestra ahi.
+
+Backend opcional (v1):
+  - PATCH /users/me con displayName en Prisma (solo si se necesita en reportes).
+
+Criterio de done Fase 1:
+  [ ] Guardar nombre persiste tras F5
+  [ ] UI refleja el cambio sin re-login
+
+
+--------------------------------------------------------------------------------
+FASE 2 - PREFERENCIAS (2-3 dias)
+Hoy es 100% mock
+--------------------------------------------------------------------------------
+
+Paso 2.1 - Modelo en Prisma
+  Opcion A - Campo JSON en User:
+    preferences Json? @default("{}")
+
+  Opcion B - Tabla dedicada UserPreferences:
+    userId, theme, timezone, emailNotifications, defaultRfc
+
+Paso 2.2 - Endpoints backend
+  - GET  /api/users/preferences
+  - PATCH /api/users/preferences
+  - DTO con class-validator:
+      theme: "light" | "dark" | "system"
+      timezone: string
+      emailNotifications: boolean
+      defaultRfc?: string
+
+Paso 2.3 - Hooks frontend
+  - useGetPreferences
+  - useUpdatePreferences
+
+Paso 2.4 - PreferencesTab
+  - Cargar desde API al montar.
+  - Guardar con mutation (no solo setPreferences local).
+
+Paso 2.5 - Aplicar tema globalmente
+  - document.documentElement.classList para dark/light.
+  - matchMedia("(prefers-color-scheme: dark)") para "system".
+
+Paso 2.6 - Timezone
+  - Persistir y usar en fechas (date-fns-tz donde aplique).
+
+Paso 2.7 - defaultRfc (opcional)
+  - Select con empresas del perfil del usuario.
+
+Paso 2.8 - Feedback
+  - Mensajes de exito/error al guardar preferencias.
+
+Criterio de done Fase 2:
+  [ ] Tema y timezone persisten tras recarga
+  [ ] Notificaciones guardadas en BD
+
+
+--------------------------------------------------------------------------------
+FASE 3 - FACTURACION (2-3 dias)
+Lectura OK; gestion incompleta
+--------------------------------------------------------------------------------
+
+Paso 3.1 - Portal Stripe (backend)
+  - POST /api/billing/create-portal-session
+  - stripe.billingPortal.sessions.create({ customer, return_url })
+
+Paso 3.2 - Webhooks adicionales
+  - customer.subscription.deleted -> downgrade a FREE, limpiar IDs Stripe
+  - customer.subscription.updated -> sincronizar status y currentPeriodEnd
+
+Paso 3.3 - Limites de plan en backend
+  - GET /api/billing/plan-limits
+  - O incluir limites en GET /users/me
+  - Evitar desincronizacion (ej. UI dice 3 conciliaciones, BD dice 1).
+
+Paso 3.4 - BillingTab frontend
+  - Reemplazar URL hardcodeada de Stripe por useBillingPortal().
+  - Mostrar: plan, subscriptionStatus, fecha renovacion, cancelacion pendiente.
+
+Paso 3.5 - CTA administrar plan
+  - Redirigir a /home/planes o checkout segun plan actual.
+
+Paso 3.6 - Estados UI
+  - Loading, error y empty states consistentes.
+
+Criterio de done Fase 3:
+  [ ] Portal Stripe abre con sesion real
+  [ ] Plan y uso coinciden con BD
+  [ ] Downgrade por cancelacion se refleja en UI
+
+
+--------------------------------------------------------------------------------
+FASE 4 - SEGURIDAD (1-2 dias)
+Funcional para email/password; gaps en OAuth
+--------------------------------------------------------------------------------
+
+Paso 4.1 - Detectar proveedor de auth
+  - user.app_metadata.provider o user.identities
+
+Paso 4.2 - Branch UI para OAuth
+  - Si es Google/OAuth: ocultar formulario de contraseña.
+  - Mostrar mensaje "Gestionada por Google".
+
+Paso 4.3 - Verificacion de contraseña actual
+  - Evaluar alternativa a signInWithPassword (puede alterar sesion).
+  - Considerar reauthenticate o reset por email.
+
+Paso 4.4 - Recuperacion
+  - Boton "Enviar enlace para restablecer contraseña" como fallback.
+
+Paso 4.5 - Opcional v2
+  - Sesiones activas, 2FA.
+
+Criterio de done Fase 4:
+  [ ] Usuarios OAuth no ven formulario roto
+  [ ] Usuarios email/password cambian contraseña correctamente
+
+
+--------------------------------------------------------------------------------
+FASE 5 - ZONA DE PELIGRO (3-4 dias)
+El mas delicado; requiere backend + Supabase Admin
+--------------------------------------------------------------------------------
+
+--- 5A: EXPORTAR DATOS ---
+
+Paso 5A.1 - Endpoint backend
+  - GET /api/users/export (autenticado)
+  - Incluir: perfil, empresas, conciliaciones (metadata), plan, fechas.
+  - Rate limit: 1 export por hora.
+
+Paso 5A.2 - DangerTab frontend
+  - Descargar blob del API (no solo metadata de Auth).
+
+--- 5B: ELIMINAR CUENTA ---
+
+Flujo recomendado (orden importa):
+  1. Cancelar suscripcion Stripe (si existe)
+  2. Borrar datos en Prisma (cascade: conciliaciones, empresas)
+  3. Borrar usuario en Supabase Auth (Admin API / service_role)
+  4. signOut() + clearAllApplicationData()
+
+Opciones de implementacion:
+  A) Nest DELETE /users/me con SUPABASE_SERVICE_ROLE_KEY (RECOMENDADO)
+  B) Supabase Edge Function con service_role
+  C) RPC PostgreSQL (no borra auth.users sin Admin API)
+
+Paso 5B.1 - Endpoint DELETE /api/users/me
+  - Orquestar Stripe + Prisma + Supabase Admin.
+
+Paso 5B.2 - DangerTab frontend
+  - Reemplazar supabase.rpc("delete_user_account") por llamada al API.
+  - No cerrar modal si falla; mostrar error especifico.
+  - Reemplazar alert() por toast.
+
+Criterio de done Fase 5:
+  [ ] Export incluye datos de negocio reales
+  [ ] Delete elimina todo y redirige a login
+
+
+--------------------------------------------------------------------------------
+FASE 6 - PULIDO UX Y CONSISTENCIA (1-2 dias)
+--------------------------------------------------------------------------------
+
+Paso 6.1 - SettingsLayout
+  - Tab activa sincronizada con URL.
+  - aria-current y focus en cambio de tab.
+
+Paso 6.2 - Guards
+  - Verificar ProtectedRoute en /home/configuracion.
+
+Paso 6.3 - Tests E2E criticos
+  - Guardar perfil
+  - Cambiar password
+  - Abrir portal billing
+  - Exportar datos
+
+Paso 6.4 - Tests unitarios
+  - Schemas Zod (validationSchemas.ts)
+  - Hooks con MSW
+
+
+================================================================================
+4. ORDEN DE EJECUCION RECOMENDADO
+================================================================================
+
+  Fase 0 (Fundamentos)
+      |
+      +---> Fase 1 (Perfil)
+      +---> Fase 2 (Preferencias)
+      +---> Fase 3 (Facturacion)
+      +---> Fase 4 (Seguridad)
+      |
+      Fase 3 ---> Fase 5 (Zona de peligro)
+      |
+      Todas ---> Fase 6 (Pulido)
+
+Prioridad de negocio:
+  1. Perfil          (rapido, alto impacto)
+  2. Facturacion     (monetizacion)
+  3. Preferencias    (producto terminado)
+  4. Seguridad       (refinar OAuth)
+  5. Zona de peligro (compliance/GDPR)
+
+
+================================================================================
+5. CHECKLIST TECNICO POR CAPA
+================================================================================
+
+BACKEND (Nest + Prisma)
+  [ ] UserPreferences o campo preferences Json en User
+  [ ] GET  /api/users/preferences
+  [ ] PATCH /api/users/preferences
+  [ ] POST /api/billing/create-portal-session
+  [ ] Webhooks: subscription.deleted, subscription.updated
+  [ ] GET  /api/users/export
+  [ ] DELETE /api/users/me (orquestacion completa)
+  [ ] DTOs + validacion en todos los endpoints nuevos
+
+SUPABASE
+  [ ] SUPABASE_SERVICE_ROLE_KEY en backend (solo servidor, nunca en frontend)
+  [ ] (Opcional) Trigger para sync email Auth -> users.email
+
+FRONTEND
+  [ ] Hooks React Query para cada operacion
+  [ ] URL tabs en appRoutes.tsx
+  [ ] Tema dark/system aplicado globalmente
+  [ ] BillingTab sin URLs hardcodeadas
+  [ ] DangerTab conectado a APIs reales
+  [ ] Tipos UserProfile completos
+
+
+================================================================================
+6. ARCHIVOS CLAVE DEL PROYECTO
+================================================================================
+
+Frontend - Settings:
+  frontend/src/features/settings/components/SettingsLayout.tsx
+  frontend/src/features/settings/components/tabs/ProfileTab.tsx
+  frontend/src/features/settings/components/tabs/BillingTab.tsx
+  frontend/src/features/settings/components/tabs/SecurityTab.tsx
+  frontend/src/features/settings/components/tabs/PreferencesTab.tsx
+  frontend/src/features/settings/components/tabs/DangerTab.tsx
+  frontend/src/features/settings/components/ui/FormComponents.tsx
+  frontend/src/features/settings/validationSchemas.ts
+
+Frontend - Stores y rutas:
+  frontend/src/store/useSettingsStore.ts
+  frontend/src/store/authStore.ts
+  frontend/src/store/useBillingStore.ts
+  frontend/src/routes/appRoutes.tsx
+  frontend/src/features/dashboard/hooks/useGetProfile.ts
+
+Backend:
+  backend/src/users/users.controller.ts
+  backend/src/users/users.service.ts
+  backend/src/billing/billing.controller.ts
+  backend/src/billing/billing.service.ts
+  backend/prisma/schema.prisma
+
+
+================================================================================
+7. RIESGOS Y MITIGACIONES
+================================================================================
+
+Riesgo                              | Mitigacion
+------------------------------------|------------------------------------------
+Limites de plan desincronizados     | Single source of truth en backend
+Delete sin cancelar Stripe          | Cancelar subscription antes de borrar
+signInWithPassword altera sesion    | Evaluar reauthenticate o reset por email
+Preferencias solo en localStorage   | Siempre persistir en BD en v1
+Usuarios OAuth sin contraseña       | Branch UI por proveedor de auth
+RPC delete_user_account inexistente | Implementar DELETE /users/me en Nest
+
+
+================================================================================
+8. ESTIMACION DE ESFUERZO
+================================================================================
+
+  Fase 0 - Fundamentos      : 1-2 dias
+  Fase 1 - Perfil           : 1 dia
+  Fase 2 - Preferencias     : 2-3 dias
+  Fase 3 - Facturacion      : 2-3 dias
+  Fase 4 - Seguridad        : 1-2 dias
+  Fase 5 - Zona de peligro  : 3-4 dias
+  Fase 6 - Pulido           : 1-2 dias
+  -----------------------------------------
+  TOTAL (1 dev senior)      : ~11-17 dias
+
+
+================================================================================
+9. SIGUIENTE PASO CONCRETO
+================================================================================
+
+Para empezar la implementacion, ejecutar en este orden:
+
+  1. Fase 0 - Fundamentos (rutas + hooks + tipos)
+  2. Fase 1 - Cerrar Perfil
+  3. Fase 2 - Backend preferencias + UI
+
+================================================================================
+  FIN DEL DOCUMENTO
+================================================================================

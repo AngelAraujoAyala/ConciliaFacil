@@ -1,6 +1,15 @@
 // ── Plan & Empresa ────────────────────────────────────────────────────────────
 export type UserPlan = "FREE" | "BASIC" | "PRO";
 
+export type {
+  SubscriptionStatus,
+  EmpresaSummary,
+  UserProfile,
+  UserPreferencesPayload,
+  UpdateAuthProfileInput,
+  BillingPortalSession,
+} from "./user";
+
 export interface Empresa {
   id: string;
   rfc: string;

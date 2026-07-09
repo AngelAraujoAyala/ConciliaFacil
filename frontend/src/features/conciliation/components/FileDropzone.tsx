@@ -108,8 +108,8 @@ export default function FileDropzone({
       onClick={() => inputRef.current?.click()}
       className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
         isDragActive
-          ? "border-blue-500 bg-blue-50/50 scale-[0.99]"
-          : "border-gray-300 bg-gray-50 hover:bg-gray-100/70 hover:border-gray-400"
+          ? "border-blue-500 bg-blue-50/50 scale-[0.99] dark:bg-blue-950/20"
+          : "border-gray-300 bg-gray-50 hover:bg-gray-100/70 hover:border-gray-400 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800/50 dark:hover:border-slate-650"
       }`}
     >
       <input
@@ -122,8 +122,8 @@ export default function FileDropzone({
       />
 
       <div className="text-4xl mb-3 select-none">{icon}</div>
-      <h3 className="text-sm font-semibold text-gray-700">{title}</h3>
-      <p className="text-xs text-gray-400 mt-1 max-w-xs mx-auto">
+      <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-350">{title}</h3>
+      <p className="text-xs text-gray-400 dark:text-slate-500 mt-1 max-w-xs mx-auto">
         {description}
       </p>
     </div>

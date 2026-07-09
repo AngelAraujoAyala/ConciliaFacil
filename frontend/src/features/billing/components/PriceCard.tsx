@@ -104,22 +104,22 @@ export const PriceCard: React.FC<PriceCardProps> = ({
   const variant = plan.buttonVariant || (plan.isPopular ? "primary" : "outline");
 
   const buttonClasses = plan.isCurrent
-    ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+    ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700"
     : {
         primary:
-          "bg-indigo-600 text-white shadow-md shadow-indigo-200 hover:bg-indigo-700 active:bg-indigo-800 focus-visible:ring-indigo-500 disabled:bg-indigo-300 disabled:shadow-none disabled:cursor-not-allowed",
+          "bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 active:bg-indigo-800 focus-visible:ring-indigo-500 disabled:bg-indigo-300 disabled:shadow-none disabled:cursor-not-allowed",
         secondary:
-          "bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300 focus-visible:ring-slate-400 disabled:opacity-50 disabled:cursor-not-allowed",
+          "bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:active:bg-slate-600 focus-visible:ring-slate-400 disabled:opacity-50 disabled:cursor-not-allowed",
         outline:
-          "border border-indigo-600 text-indigo-600 bg-transparent hover:bg-indigo-50 active:bg-indigo-100 focus-visible:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed",
+          "border border-indigo-600 text-indigo-600 bg-transparent hover:bg-indigo-50 active:bg-indigo-100 dark:border-indigo-400 dark:text-indigo-400 dark:hover:bg-indigo-950/30 dark:active:bg-indigo-950/50 focus-visible:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed",
       }[variant];
 
   return (
     <article
-      className={`relative flex flex-col h-full rounded-2xl border bg-white p-8 shadow-sm transition-all duration-300 ${
+      className={`relative flex flex-col h-full rounded-2xl border bg-white p-8 shadow-sm transition-all duration-300 dark:bg-slate-900 ${
         plan.isCurrent
-          ? "border-indigo-600 shadow-indigo-100 shadow-lg ring-1 ring-indigo-600 scale-[1.02]"
-          : "border-slate-200 hover:shadow-md hover:border-slate-300"
+          ? "border-indigo-600 shadow-indigo-100 dark:shadow-indigo-950/30 shadow-lg ring-1 ring-indigo-600 scale-[1.02]"
+          : "border-slate-200 hover:shadow-md hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-700"
       }`}
       aria-label={`Plan ${plan.name}`}
     >
@@ -131,7 +131,7 @@ export const PriceCard: React.FC<PriceCardProps> = ({
           </span>
         </div>
       )}
-
+ 
       {/* Badge "Recomendado" — solo visible en el plan popular si no es el actual */}
       {!plan.isCurrent && plan.isPopular && (
         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
@@ -148,33 +148,33 @@ export const PriceCard: React.FC<PriceCardProps> = ({
           </span>
         </div>
       )}
-
+ 
       {/* Cabecera del plan */}
       <div className="mb-6">
         <h3
           className={`text-sm font-bold uppercase tracking-widest ${
-            plan.isCurrent ? "text-indigo-600" : "text-slate-500"
+            plan.isCurrent ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 dark:text-slate-400"
           }`}
         >
           {plan.name}
         </h3>
         <div className="mt-3 flex items-end gap-1">
-          <span className="text-4xl font-black tracking-tight text-slate-900">
+          <span className="text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100">
             {plan.price}
           </span>
-          <span className="mb-1 text-sm font-medium text-slate-400">
+          <span className="mb-1 text-sm font-medium text-slate-400 dark:text-slate-500">
             {plan.priceSuffix}
           </span>
         </div>
-        <p className="mt-2 text-sm leading-relaxed text-slate-500">
+        <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
           {plan.description}
         </p>
       </div>
-
+ 
       {/* Divisor */}
       <div
         className={`mb-6 h-px w-full ${
-          plan.isCurrent ? "bg-indigo-100" : "bg-slate-100"
+          plan.isCurrent ? "bg-indigo-100 dark:bg-indigo-900/50" : "bg-slate-100 dark:bg-slate-800"
         }`}
       />
 

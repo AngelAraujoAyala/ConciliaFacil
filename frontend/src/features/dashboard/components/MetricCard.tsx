@@ -1,4 +1,5 @@
 import React from "react";
+import { METRIC_ACCENT } from "../../../utils/themeClasses";
 
 interface MetricCardProps {
   title: string;
@@ -6,7 +7,7 @@ interface MetricCardProps {
   description: string;
   icon: React.ReactNode;
   isLoading?: boolean;
-  accentColor?: "indigo" | "emerald" | "amber" | "slate";
+  accentColor?: keyof typeof METRIC_ACCENT;
 }
 
 export const MetricCard: React.FC<MetricCardProps> = ({
@@ -17,41 +18,32 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   isLoading = false,
   accentColor = "indigo",
 }) => {
-  const accentClasses = {
-    indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
-    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
-    amber: "bg-amber-50 text-amber-600 border-amber-100",
-    slate: "bg-slate-50 text-slate-600 border-slate-100",
-  };
-
   if (isLoading) {
     return (
-      <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4 animate-pulse">
-        <div className="flex justify-between items-center">
-          <div className="h-4 bg-slate-200 rounded-md w-24" />
-          <div className="h-8 w-8 bg-slate-200 rounded-lg" />
+      <div className="ui-card-lg animate-pulse space-y-4 p-6">
+        <div className="flex items-center justify-between">
+          <div className="h-4 w-24 rounded-md bg-slate-200 dark:bg-slate-700" />
+          <div className="h-8 w-8 rounded-lg bg-slate-200 dark:bg-slate-700" />
         </div>
         <div className="space-y-2">
-          <div className="h-8 bg-slate-200 rounded-md w-36" />
-          <div className="h-3 bg-slate-200 rounded-md w-48" />
+          <div className="h-8 w-36 rounded-md bg-slate-200 dark:bg-slate-700" />
+          <div className="h-3 w-48 rounded-md bg-slate-200 dark:bg-slate-700" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow duration-300">
-      <div className="flex justify-between items-start gap-4">
-        <span className="text-sm font-semibold text-slate-500">{title}</span>
-        <div className={`p-2 rounded-xl border ${accentClasses[accentColor]}`}>
-          {icon}
-        </div>
+    <div className="ui-card-lg flex flex-col justify-between p-6 transition-shadow duration-300 hover:shadow-md">
+      <div className="flex items-start justify-between gap-4">
+        <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">{title}</span>
+        <div className={`p-2 ${METRIC_ACCENT[accentColor]}`}>{icon}</div>
       </div>
       <div className="mt-4 space-y-1">
-        <span className="text-2xl font-bold tracking-tight text-slate-900">
+        <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
           {value}
         </span>
-        <p className="text-xs text-slate-400">{description}</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500">{description}</p>
       </div>
     </div>
   );

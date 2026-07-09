@@ -242,29 +242,29 @@ export const PricingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-16 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 px-4 py-16 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
         {/* ── Encabezado de la seccion ───────────────────────────────────── */}
         <header className="mb-14 text-center">
-          <span className="inline-block rounded-full bg-indigo-50 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-indigo-600">
+          <span className="inline-block rounded-full bg-indigo-50 dark:bg-indigo-950/40 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
             Planes y Precios
           </span>
-          <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
+          <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-5xl">
             Elige el plan{" "}
-            <span className="text-indigo-600">perfecto para ti</span>
+            <span className="text-indigo-600 dark:text-indigo-450">perfecto para ti</span>
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-slate-500">
+          <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-slate-500 dark:text-slate-400">
             Sin costos ocultos. Cancela cuando quieras. Procesamiento local
             garantizado en todos los planes.
           </p>
 
           {/* Indicador de garantia */}
-          <div className="mt-6 inline-flex items-center gap-2 text-sm text-slate-500">
+          <div className="mt-6 inline-flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 20 20"
               fill="currentColor"
-              className="h-4 w-4 text-emerald-500"
+              className="h-4 w-4 text-emerald-500 dark:text-emerald-455"
               aria-hidden="true"
             >
               <path
@@ -302,29 +302,29 @@ export const PricingPage: React.FC = () => {
 
 
         {/* ── Características comunes a todos los planes ───────────────── */}
-        <div className="mt-12 text-center bg-slate-100/50 border border-slate-200/60 rounded-2xl p-6">
-          <p className="text-sm font-semibold text-slate-700">
+        <div className="mt-12 text-center bg-slate-100/50 border border-slate-200/60 dark:bg-slate-900/50 dark:border-slate-800 rounded-2xl p-6">
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
             Todos los planes incluyen:
           </p>
-          <p className="mt-1.5 text-sm text-slate-500 max-w-3xl mx-auto leading-relaxed">
+          <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400 max-w-3xl mx-auto leading-relaxed">
             Cruce automático de movimientos vs XMLs, carga masiva, clasificación de excepciones, exportación a Excel e historial de sesiones.
           </p>
         </div>
 
         {/* ── Nota de pie — refuerza la confianza del usuario ───────────── */}
-        <footer className="mt-14 text-center text-xs text-slate-400">
+        <footer className="mt-14 text-center text-xs text-slate-400 dark:text-slate-500">
           <p>
             Al suscribirte aceptas nuestros{" "}
             <a
               href="/terminos"
-              className="underline underline-offset-2 hover:text-slate-600 transition-colors"
+              className="underline underline-offset-2 hover:text-slate-600 dark:hover:text-slate-350 transition-colors"
             >
               Terminos de Servicio
             </a>{" "}
             y{" "}
             <a
               href="/privacidad"
-              className="underline underline-offset-2 hover:text-slate-600 transition-colors"
+              className="underline underline-offset-2 hover:text-slate-600 dark:hover:text-slate-350 transition-colors"
             >
               Politica de Privacidad
             </a>

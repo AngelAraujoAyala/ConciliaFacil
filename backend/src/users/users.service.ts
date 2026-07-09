@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { AppTheme, type UserPreferences } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { UpdateUserPreferencesDto } from './dto/update-user-preferences.dto';
+import {
+  DEFAULT_USER_PREFERENCES,
+  type UserPreferencesResponse,
+} from './user-preferences.constants';
 
 /** Calcula el primer día del mes siguiente a `from` en UTC. */
 function calcularProximoReset(from: Date = new Date()): Date {
@@ -86,5 +92,76 @@ export class UsersService {
     }
 
     return user;
+  }
+
+  async getPreferences(
+    userId: string,
+    email: string,
+  ): Promise<UserPreferencesResponse> {
+    await this.getProfile(userId, email);
+
+    const preferences = await this.ensureUserPreferences(userId);
+    return this.toPreferencesResponse(preferences);
+  }
+
+  async updatePreferences(
+    userId: string,
+    email: string,
+    dto: UpdateUserPreferencesDto,
+  ): Promise<UserPreferencesResponse> {
+    await this.getProfile(userId, email);
+
+    const preferences = await this.prisma.userPreferences.upsert({
+      where: { userId },
+      create: {
+        userId,
+        theme: dto.theme ?? AppTheme.light,
+        timezone: dto.timezone ?? DEFAULT_USER_PREFERENCES.timezone,
+        emailNotifications:
+          dto.emailNotifications ?? DEFAULT_USER_PREFERENCES.emailNotifications,
+        defaultRfc: dto.defaultRfc ?? null,
+      },
+      update: {
+        ...(dto.theme !== undefined ? { theme: dto.theme } : {}),
+        ...(dto.timezone !== undefined ? { timezone: dto.timezone } : {}),
+        ...(dto.emailNotifications !== undefined
+          ? { emailNotifications: dto.emailNotifications }
+          : {}),
+        ...(dto.defaultRfc !== undefined ? { defaultRfc: dto.defaultRfc } : {}),
+      },
+    });
+
+    return this.toPreferencesResponse(preferences);
+  }
+
+  private async ensureUserPreferences(
+    userId: string,
+  ): Promise<UserPreferences> {
+    const existing = await this.prisma.userPreferences.findUnique({
+      where: { userId },
+    });
+
+    if (existing) return existing;
+
+    return this.prisma.userPreferences.create({
+      data: {
+        userId,
+        theme: AppTheme.light,
+        timezone: DEFAULT_USER_PREFERENCES.timezone,
+        emailNotifications: DEFAULT_USER_PREFERENCES.emailNotifications,
+        defaultRfc: DEFAULT_USER_PREFERENCES.defaultRfc,
+      },
+    });
+  }
+
+  private toPreferencesResponse(
+    preferences: UserPreferences,
+  ): UserPreferencesResponse {
+    return {
+      theme: preferences.theme,
+      timezone: preferences.timezone,
+      emailNotifications: preferences.emailNotifications,
+      ...(preferences.defaultRfc ? { defaultRfc: preferences.defaultRfc } : {}),
+    };
   }
 }

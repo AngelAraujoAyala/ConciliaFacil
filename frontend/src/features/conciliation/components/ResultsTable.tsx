@@ -180,29 +180,29 @@ export default function ResultsTable() {
     <div className="space-y-6">
       <SummaryCards summary={summary} />
 
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-gray-200 pb-2">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-gray-200 dark:border-slate-800 pb-2">
         <div className="flex space-x-1 overflow-x-auto w-full lg:w-auto">
           <button
             onClick={() => setActiveTab("ALL")}
-            className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all ${activeTab === "ALL" ? "border-b-2 border-blue-600 text-blue-600 font-bold bg-blue-50/20" : "text-gray-500"}`}
+            className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all ${activeTab === "ALL" ? "border-b-2 border-blue-600 text-blue-600 dark:border-blue-450 dark:text-blue-400 font-bold bg-blue-50/20 dark:bg-blue-950/25" : "text-gray-500 dark:text-slate-405"}`}
           >
             Grupos ({matches.length})
           </button>
           <button
             onClick={() => setActiveTab("MATCHED")}
-            className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all ${activeTab === "MATCHED" ? "border-b-2 border-emerald-600 text-emerald-600 font-bold bg-emerald-50/20" : "text-gray-500"}`}
+            className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all ${activeTab === "MATCHED" ? "border-b-2 border-emerald-600 text-emerald-600 dark:border-emerald-450 dark:text-emerald-400 font-bold bg-emerald-50/20 dark:bg-emerald-950/25" : "text-gray-500 dark:text-slate-405"}`}
           >
             Cuadrado Perfecto ({summary.fullyConciliated})
           </button>
           <button
             onClick={() => setActiveTab("ISSUES")}
-            className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all ${activeTab === "ISSUES" ? "border-b-2 border-amber-500 text-amber-600 font-bold bg-amber-50/20" : "text-gray-500"}`}
+            className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all ${activeTab === "ISSUES" ? "border-b-2 border-amber-500 text-amber-600 dark:border-amber-450 dark:text-amber-400 font-bold bg-amber-50/20 dark:bg-amber-950/25" : "text-gray-500 dark:text-slate-405"}`}
           >
             Alertas ({summary.reviewNeeded})
           </button>
           <button
             onClick={() => setActiveTab("EXCEPTIONS")}
-            className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all flex items-center gap-1.5 ${activeTab === "EXCEPTIONS" ? "border-b-2 border-rose-500 text-rose-600 font-bold bg-rose-50/20" : "text-gray-500"}`}
+            className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all flex items-center gap-1.5 ${activeTab === "EXCEPTIONS" ? "border-b-2 border-rose-500 text-rose-600 dark:border-rose-450 dark:text-rose-400 font-bold bg-rose-50/20 dark:bg-rose-950/25" : "text-gray-500 dark:text-slate-405"}`}
           >
             🛡️ Excepciones
             {classifiedMovements.pendingReal.length > 0 && (
@@ -213,7 +213,7 @@ export default function ResultsTable() {
           </button>
           <button
             onClick={() => setActiveTab("MANUAL")}
-            className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all ${activeTab === "MANUAL" ? "border-b-2 border-indigo-500 text-indigo-600 font-bold bg-indigo-50/20" : "text-gray-500"}`}
+            className={`px-4 py-2 text-xs font-medium rounded-t-xl transition-all ${activeTab === "MANUAL" ? "border-b-2 border-indigo-500 text-indigo-600 dark:border-indigo-450 dark:text-indigo-400 font-bold bg-indigo-50/20 dark:bg-indigo-950/25" : "text-gray-500 dark:text-slate-405"}`}
           >
             Conciliar ({summary.unreconciledBank + summary.unreconciledInvoices})
           </button>
@@ -231,7 +231,7 @@ export default function ResultsTable() {
                 },
               });
             }}
-            className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-3 py-2 rounded-xl transition-colors cursor-pointer"
+            className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-3 py-2 rounded-xl transition-colors cursor-pointer dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300"
           >
             🔄 Reiniciar conciliación
           </button>
@@ -239,7 +239,7 @@ export default function ResultsTable() {
           <button
             onClick={() => handleOpenSaveModal("DRAFT")}
             disabled={isSaving || !hasSessionData}
-            className="text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold px-3 py-2 rounded-xl border border-amber-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+            className="text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold px-3 py-2 rounded-xl border border-amber-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer dark:bg-amber-950/40 dark:hover:bg-amber-900/30 dark:text-amber-300 dark:border-amber-900/50"
           >
             📁 Guardar progreso
           </button>
@@ -254,7 +254,7 @@ export default function ResultsTable() {
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden p-4">
+      <div className="bg-white border border-gray-200 dark:bg-slate-900 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden p-4">
         {activeTab === "MANUAL" ? (
           <ManualMatchPanel />
         ) : activeTab === "EXCEPTIONS" ? (
@@ -275,13 +275,13 @@ export default function ResultsTable() {
         )}
       </div>
 
-      <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-5 space-y-4 shadow-inner">
+      <div className="bg-gray-50 border border-dashed border-gray-200 dark:bg-slate-900/40 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-inner">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-bold text-gray-700 flex items-center gap-1.5">
+            <h3 className="text-sm font-bold text-gray-700 dark:text-slate-300 flex items-center gap-1.5">
               📥 ¿Encontraste las facturas que faltaban?
             </h3>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-400 dark:text-slate-500">
               Arrastra nuevos archivos XML aquí. Se añadirán al vuelo sin
               alterar tus cruces.
             </p>
@@ -304,7 +304,7 @@ export default function ResultsTable() {
 
         {dropzoneFeedback && (
           <div
-            className={`px-4 py-2.5 rounded-xl text-xs font-medium flex justify-between items-center ${dropzoneFeedback.type === "success" ? "bg-emerald-50 border border-emerald-100 text-emerald-800" : "bg-amber-50 border border-amber-100 text-amber-800"}`}
+            className={`px-4 py-2.5 rounded-xl text-xs font-medium flex justify-between items-center ${dropzoneFeedback.type === "success" ? "bg-emerald-50 border border-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-900/50 dark:text-emerald-350" : "bg-amber-50 border border-amber-100 text-amber-800 dark:bg-amber-950/40 dark:border-amber-900/50 dark:text-amber-355"}`}
           >
             <span>{dropzoneFeedback.msg}</span>
             <button
@@ -319,13 +319,13 @@ export default function ResultsTable() {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-md p-6 transform transition-all animate-in fade-in zoom-in-95 duration-200">
-            <h3 className="text-base font-bold text-gray-900 mb-1">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-800 w-full max-w-md p-6 transform transition-all animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="text-base font-bold text-gray-900 dark:text-slate-100 mb-1">
               {selectedStatus === "COMPLETED"
                 ? "🔒 Finalizar y Cerrar Auditoría"
                 : "📁 Guardar Progreso Actual"}
             </h3>
-            <p className="text-xs text-gray-500 mb-4">
+            <p className="text-xs text-gray-500 dark:text-slate-450 mb-4">
               {selectedStatus === "COMPLETED"
                 ? "La sesión se guardará con estado cerrado para tu histórico contable permanente."
                 : "Se creará un borrador editable para que puedas continuar ajustando los XMLs más tarde."}
@@ -334,7 +334,7 @@ export default function ResultsTable() {
             <div className="space-y-1 mb-5">
               <label
                 htmlFor="modal-title"
-                className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider"
+                className="block text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider"
               >
                 Título de la conciliación
               </label>
@@ -344,7 +344,7 @@ export default function ResultsTable() {
                 value={conciliationTitle}
                 onChange={(e) => setConciliationTitle(e.target.value)}
                 placeholder="Ej. Conciliación Mensual Impuestos"
-                className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                className="w-full px-3 py-2 text-sm text-gray-900 dark:text-slate-100 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                 autoFocus
               />
             </div>
@@ -353,7 +353,7 @@ export default function ResultsTable() {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="px-3.5 py-2 text-xs font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 transition-colors cursor-pointer"
+                className="px-3.5 py-2 text-xs font-semibold text-gray-600 dark:text-slate-300 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl border border-gray-200 dark:border-slate-700 transition-colors cursor-pointer"
               >
                 Cancelar
               </button>
