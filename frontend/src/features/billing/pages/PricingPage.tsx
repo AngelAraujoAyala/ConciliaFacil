@@ -3,6 +3,10 @@ import { useBillingStore } from "../../../store/useBillingStore";
 import { PriceCard } from "../components/PriceCard";
 import type { SubscriptionPlan } from "../components/PriceCard";
 import { useGetProfile } from "../../dashboard/hooks/useGetProfile";
+import { changePlanRequest, previewUpgradeRequest, cancelSubscriptionRequest } from "../api/billingApi";
+import { useModalStore } from "../../../store/modalStore";
+import { toast } from "sonner";
+import { supabase } from "../../../api/supabase";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Datos de planes
@@ -116,12 +120,76 @@ const ErrorAlert: React.FC<ErrorAlertProps> = ({ message, onDismiss }) => (
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Banner de cambio de plan programado
+// Visible solo cuando el usuario tiene un downgrade pendiente al fin del ciclo.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface DowngradePendingBannerProps {
+  /** Nombre del plan al que se va a cambiar (ej. "Basic") */
+  targetPlanName: string;
+  /** Fecha de corte como string ISO — se formatea con Intl */
+  periodEnd: string;
+}
+
+const DowngradePendingBanner: React.FC<DowngradePendingBannerProps> = ({
+  targetPlanName,
+  periodEnd,
+}) => {
+  const formattedDate = new Intl.DateTimeFormat("es-MX", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "America/Mexico_City",
+  }).format(new Date(periodEnd));
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="mb-10 flex items-start gap-4 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 shadow-sm dark:border-amber-800/60 dark:bg-amber-950/30"
+    >
+      {/* Icono */}
+      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          className="h-5 w-5 text-amber-600 dark:text-amber-400"
+          aria-hidden="true"
+        >
+          <path
+            fillRule="evenodd"
+            d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 0 0 0-1.5h-3.25V5Z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </div>
+
+      {/* Texto */}
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+          Cambio de plan programado
+        </p>
+        <p className="mt-1 text-sm leading-relaxed text-amber-800 dark:text-amber-300">
+          Tu suscripción cambiará al{" "}
+          <strong className="font-semibold">Plan {targetPlanName}</strong>{" "}
+          automáticamente el próximo{" "}
+          <strong className="font-semibold">{formattedDate}</strong>.{" "}
+          Seguirás disfrutando de los beneficios de tu plan actual hasta ese día.
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Pagina principal
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const PricingPage: React.FC = () => {
   const { isLoading, error, checkoutPlan, clearError } = useBillingStore();
   const { data: profile } = useGetProfile();
+  const { showConfirm } = useModalStore();
 
   /**
    * `activePriceId` rastrea cual boton especifico disparo la carga.
@@ -129,6 +197,7 @@ export const PricingPage: React.FC = () => {
    * no todos los botones de la pagina.
    */
   const [activePriceId, setActivePriceId] = useState<string | null>(null);
+  const [previewLoadingPriceId, setPreviewLoadingPriceId] = useState<string | null>(null);
 
   // Cálculo dinámico y escalable de los estados de cada plan basado en el plan actual del usuario
   const dynamicPlans = useMemo<SubscriptionPlan[]>(() => {
@@ -230,15 +299,176 @@ export const PricingPage: React.FC = () => {
     };
   }, [clearError]);
 
-  const handleCheckout = (priceId: string | null) => {
-    if (!priceId) {
-      alert(
-        "Para gestionar la cancelación de tu suscripción y volver al Plan Gratis, por favor contáctanos en soporte@conciliafacil.com y te ayudaremos de inmediato."
-      );
+  // Función para determinar el tipo de acción basado en el plan seleccionado
+  const getPlanActionType = (planId: string): "UPGRADE" | "DOWNGRADE" | "CHECKOUT" | "CURRENT" => {
+    const PLAN_RANK: Record<string, number> = { FREE: 0, BASIC: 1, PRO: 2 };
+    const currentRank = PLAN_RANK[profile?.plan || "FREE"];
+    const targetRank = PLAN_RANK[planId.toUpperCase()];
+
+    if (currentRank === targetRank) return "CURRENT";
+    if (profile?.plan === "FREE") return "CHECKOUT"; // Nueva compra redirige a pasarela
+    return targetRank > currentRank ? "UPGRADE" : "DOWNGRADE";
+  };
+
+  const handlePlanClick = async (plan: SubscriptionPlan) => {
+    if (plan.isDisabled) return;
+
+    const actionType = getPlanActionType(plan.id);
+
+    // Nueva compra: usuario FREE adquiriendo su primer plan de pago
+    if (actionType === "CHECKOUT") {
+      if (plan.stripePriceId) {
+        setActivePriceId(plan.stripePriceId);
+        void checkoutPlan(plan.stripePriceId);
+      }
       return;
     }
-    setActivePriceId(priceId);
-    void checkoutPlan(priceId);
+
+    // Downgrade: abrir modal directamente sin preview
+    if (actionType === "DOWNGRADE") {
+      showConfirm({
+        title: `Cambiar a Plan ${plan.name}`,
+        message: `Tu plan actual permanecerá activo hasta el fin del ciclo de cobro. A partir de entonces se aplicará el nuevo plan. ¿Deseas programar el cambio?`,
+        type: "warning",
+        onConfirm: async () => {
+          if (!plan.stripePriceId) return;
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          if (sessionError || !session?.access_token) {
+            toast.error("No estás autenticado. Por favor inicia sesión e intenta de nuevo.");
+            return;
+          }
+          const response = await changePlanRequest(plan.stripePriceId, session.access_token);
+          if (response.action === "REDIRECT_CHECKOUT") {
+            setActivePriceId(plan.stripePriceId);
+            void checkoutPlan(plan.stripePriceId);
+          } else {
+            toast.success(response.message ?? "Plan actualizado correctamente.");
+            window.location.reload();
+          }
+        },
+      });
+      return;
+    }
+
+    // Upgrade: consultar prorrata primero, luego abrir modal con monto exacto
+    if (actionType === "UPGRADE" && plan.stripePriceId) {
+      setPreviewLoadingPriceId(plan.stripePriceId);
+      try {
+        const { amountDue, currency } = await previewUpgradeRequest(plan.stripePriceId);
+
+        // Formatear el monto: Stripe lo devuelve en centavos
+        const formatted = new Intl.NumberFormat("es-MX", {
+          style: "currency",
+          currency: currency.toUpperCase(),
+          minimumFractionDigits: 2,
+        }).format(amountDue / 100);
+
+        showConfirm({
+          title: `Actualizar a Plan ${plan.name}`,
+          message: (
+            <span>
+              Se realizará un cargo inmediato de{" "}
+              <strong className="font-semibold text-slate-700 dark:text-slate-200">
+                {formatted} {currency.toUpperCase()}
+              </strong>{" "}
+              a tu tarjeta registrada, correspondiente a los días restantes de tu ciclo actual.
+              <br />
+              <br />
+              Tu plan cambiará al instante y tu próxima renovación mensual será de {plan.price}. ¿Confirmas el cambio?
+            </span>
+          ),
+          type: "info",
+          onConfirm: async () => {
+            if (!plan.stripePriceId) return;
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            if (sessionError || !session?.access_token) {
+              toast.error("No estás autenticado. Por favor inicia sesión e intenta de nuevo.");
+              return;
+            }
+            const response = await changePlanRequest(plan.stripePriceId, session.access_token);
+            if (response.action === "REDIRECT_CHECKOUT") {
+              setActivePriceId(plan.stripePriceId);
+              void checkoutPlan(plan.stripePriceId);
+            } else if (response.action === "UPGRADE_SUCCESS" || response.action === "DOWNGRADE_PENDING") {
+              toast.success(response.message);
+              window.location.reload();
+            } else {
+              toast.success(response.message ?? "Plan actualizado correctamente.");
+              window.location.reload();
+            }
+          },
+        });
+      } catch (err: unknown) {
+        // Extraer el mensaje real del backend para facilitar el diagnóstico
+        let detail = "No se pudo calcular el costo del cambio de plan. Intenta de nuevo.";
+        if (
+          err &&
+          typeof err === "object" &&
+          "response" in err &&
+          (err as any).response?.data?.message
+        ) {
+          const raw = (err as any).response.data.message;
+          detail = Array.isArray(raw) ? raw.join(". ") : String(raw);
+        } else if (err instanceof Error) {
+          detail = err.message;
+        }
+        toast.error(detail);
+        console.error("[previewUpgrade] Error:", err);
+      } finally {
+        setPreviewLoadingPriceId(null);
+      }
+    }
+  };
+
+  const handleCancelSubscription = () => {
+    const periodEnd = profile?.currentPeriodEnd;
+    const formattedDate = periodEnd
+      ? new Intl.DateTimeFormat("es-MX", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+          timeZone: "America/Mexico_City",
+        }).format(new Date(periodEnd))
+      : "la fecha de corte";
+
+    showConfirm({
+      title: "Cancelar suscripción",
+      message: (
+        <span>
+          Seguirás disfrutando de todos los beneficios de tu plan actual hasta el{" "}
+          <strong className="font-semibold text-slate-700 dark:text-slate-200">
+            {formattedDate}
+          </strong>
+          . Después de esa fecha, tu cuenta volverá automáticamente al{" "}
+          <strong className="font-semibold text-slate-700 dark:text-slate-200">
+            Plan Gratis
+          </strong>
+          . ¿Confirmas la cancelación?
+        </span>
+      ),
+      type: "danger",
+      onConfirm: async () => {
+        try {
+          const response = await cancelSubscriptionRequest();
+          toast.success(response.message);
+          window.location.reload();
+        } catch (err: unknown) {
+          let detail = "No se pudo cancelar la suscripción. Intenta de nuevo.";
+          if (
+            err &&
+            typeof err === "object" &&
+            "response" in err &&
+            (err as any).response?.data?.message
+          ) {
+            const raw = (err as any).response.data.message;
+            detail = Array.isArray(raw) ? raw.join(". ") : String(raw);
+          } else if (err instanceof Error) {
+            detail = err.message;
+          }
+          toast.error(detail);
+        }
+      },
+    });
   };
 
   return (
@@ -284,6 +514,20 @@ export const PricingPage: React.FC = () => {
           </div>
         )}
 
+        {/* ── Banner de downgrade pendiente ─────────────────────────────── */}
+        {profile?.cancelAtPeriodEnd && profile.currentPeriodEnd && (
+          <DowngradePendingBanner
+            targetPlanName={
+              // pendingPriceId contiene el price ID del plan DESTINO del downgrade.
+              // null significa cancelación a FREE (sin plan de pago).
+              profile.pendingPriceId === "price_1TpCWFRk8JjGytDbEsAY9wVo"
+                ? "Basic"
+                : "Gratis"
+            }
+            periodEnd={profile.currentPeriodEnd}
+          />
+        )}
+
         {/* ── Grid de tarjetas de planes ────────────────────────────────── */}
         <section
           aria-label="Planes de suscripcion disponibles"
@@ -293,13 +537,25 @@ export const PricingPage: React.FC = () => {
             <PriceCard
               key={plan.id}
               plan={plan}
-              isLoading={isLoading}
-              activePriceId={activePriceId}
-              onCheckout={handleCheckout}
+              isLoading={isLoading || previewLoadingPriceId !== null}
+              activePriceId={activePriceId ?? previewLoadingPriceId}
+              onCheckout={handlePlanClick}
             />
           ))}
         </section>
 
+        {/* ── Cancelar suscripción ──────────────────────────────────────── */}
+        {profile?.isSubscribed && (!profile.cancelAtPeriodEnd || !!profile.pendingPriceId) && (
+          <div className="mt-8 text-center">
+            <button
+              type="button"
+              onClick={handleCancelSubscription}
+              className="text-sm text-slate-400 underline underline-offset-4 transition-colors hover:text-rose-500 dark:text-slate-500 dark:hover:text-rose-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 rounded"
+            >
+              Cancelar suscripción
+            </button>
+          </div>
+        )}
 
         {/* ── Características comunes a todos los planes ───────────────── */}
         <div className="mt-12 text-center bg-slate-100/50 border border-slate-200/60 dark:bg-slate-900/50 dark:border-slate-800 rounded-2xl p-6">

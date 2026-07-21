@@ -99,10 +99,8 @@ export const GlobalModal: React.FC = () => {
                     <DialogTitle as="h3" className="text-base font-bold leading-6 text-slate-900 dark:text-slate-100">
                       {title}
                     </DialogTitle>
-                    <div className="mt-2">
-                      <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                        {message}
-                      </p>
+                    <div className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                      {message}
                     </div>
                   </div>
                 </div>

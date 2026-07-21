@@ -21,7 +21,7 @@ export class ReconciliationsService {
     userId: string,
     rfcEmpresa?: string | null,
     tx?: Prisma.TransactionClient,
-  ): Promise<{ esRfcNuevo: boolean; empresaId?: string }> {
+  ): Promise<{ esRfcNuevo: boolean; empresaId?: string; incrementarRfcContador: boolean }> {
     const prismaClient = tx || this.prisma;
     const user = await prismaClient.user.findUnique({
       where: { id: userId },
@@ -43,16 +43,23 @@ export class ReconciliationsService {
         where: { id: userId },
         data: {
           monthlyConciliations: 0,
+          monthlyRfcs: 0,
           nextResetDate: nextReset,
         },
       });
 
       user.monthlyConciliations = 0;
+      user.monthlyRfcs = 0;
       user.nextResetDate = nextReset;
     }
 
+    const nextReset = new Date(user.nextResetDate);
+    const lastReset = new Date(nextReset);
+    lastReset.setMonth(lastReset.getMonth() - 1);
+
     let esRfcNuevo = false;
     let empresaId: string | undefined = undefined;
+    let incrementarRfcContador = false;
 
     if (rfcEmpresa) {
       const normalizedRfc = rfcEmpresa.trim().toUpperCase();
@@ -64,24 +71,41 @@ export class ReconciliationsService {
         empresaId = empresaExistente.id;
       } else {
         esRfcNuevo = true;
-        const empresasRegistradas = user.empresas.length;
+      }
 
-        if (user.plan === UserPlan.FREE && empresasRegistradas >= 1) {
+      // Validamos si ya concilió este RFC en el ciclo de facturación actual
+      const yaConciliadoEsteMes = await prismaClient.conciliation.findFirst({
+        where: {
+          userId,
+          rfcEmpresa: {
+            mode: 'insensitive',
+            equals: normalizedRfc,
+          },
+          createdAt: {
+            gte: lastReset,
+          },
+        },
+      });
+
+      if (!yaConciliadoEsteMes) {
+        incrementarRfcContador = true;
+
+        const PLAN_RFC_LIMITS: Record<UserPlan, number | null> = {
+          [UserPlan.FREE]: 1,
+          [UserPlan.BASIC]: 5,
+          [UserPlan.PRO]: null,
+        };
+
+        const rfcLimit = PLAN_RFC_LIMITS[user.plan];
+        if (rfcLimit !== null && user.monthlyRfcs >= rfcLimit) {
           throw new ForbiddenException(
-            'Tu plan actual solo permite gestionar 1 RFC. Actualiza tu plan para registrar nuevos clientes.',
+            `Has alcanzado el límite de ${rfcLimit} RFC(s) este mes en tu plan ${user.plan}. ` +
+              `El contador se reiniciará el ${user.nextResetDate.toLocaleDateString()}.`,
           );
         }
-
-        if (user.plan === UserPlan.BASIC && empresasRegistradas >= 5) {
-          throw new ForbiddenException(
-            'Has alcanzado el limite de 5 RFCs de tu plan Basico. Actualiza a Plan Pro para gestionar mas clientes.',
-          );
-        }
-        // El plan PRO no tiene limite de RFCs.
       }
     }
 
-    // ── Validacion de conciliaciones mensuales por plan ──────────────────────
     if (user.plan === UserPlan.FREE && user.monthlyConciliations >= 3) {
       throw new ForbiddenException(
         'Has alcanzado el limite de 3 conciliaciones mensuales de tu plan gratuito. El contador se reiniciara el ' +
@@ -89,22 +113,7 @@ export class ReconciliationsService {
       );
     }
 
-    if (user.plan === UserPlan.BASIC && user.monthlyConciliations >= 50) {
-      throw new ForbiddenException(
-        'Has alcanzado el limite de 50 conciliaciones mensuales de tu plan Basic. El contador se reiniciara el ' +
-          user.nextResetDate.toLocaleDateString() +
-          '. Actualiza a Plan Pro para obtener 200 conciliaciones.',
-      );
-    }
-
-    if (user.plan === UserPlan.PRO && user.monthlyConciliations >= 200) {
-      throw new ForbiddenException(
-        'Has alcanzado el limite de 200 conciliaciones mensuales de tu plan Pro. El contador se reiniciara el ' +
-          user.nextResetDate.toLocaleDateString(),
-      );
-    }
-
-    return { esRfcNuevo, empresaId };
+    return { esRfcNuevo, empresaId, incrementarRfcContador };
   }
 
   /**
@@ -193,13 +202,20 @@ export class ReconciliationsService {
           },
         });
 
-        // 6. Incrementar contador de conciliaciones mensuales
+        // 6. Incrementar contador de conciliaciones mensuales (y RFCs si aplica)
         await tx.user.update({
           where: { id: createConciliationDto.userId },
           data: {
             monthlyConciliations: {
               increment: 1,
             },
+            ...(validation.incrementarRfcContador
+              ? {
+                  monthlyRfcs: {
+                    increment: 1,
+                  },
+                }
+              : {}),
           },
         });
 

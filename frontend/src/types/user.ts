@@ -26,6 +26,7 @@ export interface UserProfile {
   isSubscribed: boolean;
   freeConciliationsLeft: number;
   monthlyConciliations: number;
+  monthlyRfcs: number;
   nextResetDate: string;
   createdAt: string;
   updatedAt?: string;
@@ -34,6 +35,8 @@ export interface UserProfile {
   stripePriceId: string | null;
   subscriptionStatus: SubscriptionStatus | null;
   currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  pendingPriceId: string | null;
   empresas: EmpresaSummary[];
   _count: {
     conciliations: number;

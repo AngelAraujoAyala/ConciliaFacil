@@ -81,6 +81,7 @@ export class UsersService {
         where: { id },
         data: {
           monthlyConciliations: 0,
+          monthlyRfcs: 0,
           nextResetDate: nextReset,
         },
         include: includeOpts,

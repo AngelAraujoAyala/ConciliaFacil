@@ -67,10 +67,12 @@ export const MetricsGrid: React.FC = () => {
   const formattedProgreso = `${formatCurrency(montoCuadrado)} / ${formatCurrency(montoTotal)} MXN`;
   const amountDescription = "Monto cuadrado en borradores actuales";
 
-  // 3. Tarjeta 3: RFCs conciliados este mes
-  const rfcCount = profile?.empresas?.length ?? 0;
+  // 3. Tarjeta 3: RFCs nuevos este mes
+  const rfcCount = profile?.monthlyRfcs ?? 0;
   const isRfcUnlimited = profile?.plan === "PRO";
-  const rfcLimitText = isRfcUnlimited ? "ilimitados" : (profile?.plan === "BASIC" ? "5" : "1");
+  const RFC_PLAN_LIMITS: Record<string, number | null> = { FREE: 1, BASIC: 5, PRO: null };
+  const rfcLimit = RFC_PLAN_LIMITS[profile?.plan ?? "FREE"];
+  const rfcLimitText = rfcLimit === null ? "ilimitados" : String(rfcLimit);
   const rfcValue = `${rfcCount} / ${rfcLimitText}`;
   const rfcDescription = usageDescription;
 
@@ -92,7 +94,7 @@ export const MetricsGrid: React.FC = () => {
         accentColor="indigo"
       />
       <MetricCard
-        title="RFCs Conciliados este Mes"
+        title="RFCs nuevos este mes"
         value={rfcValue}
         description={rfcDescription}
         icon={<Building2 className="h-5 w-5" />}

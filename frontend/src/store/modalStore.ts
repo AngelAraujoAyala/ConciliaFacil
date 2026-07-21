@@ -1,10 +1,11 @@
+import React from "react";
 import { create } from "zustand";
 
 export type ModalType = "success" | "danger" | "warning" | "info";
 
 interface ModalOptions {
   title: string;
-  message: string;
+  message: React.ReactNode;
   type?: ModalType;
 }
 
@@ -16,7 +17,7 @@ interface ConfirmOptions extends ModalOptions {
 interface ModalState {
   isOpen: boolean;
   title: string;
-  message: string;
+  message: React.ReactNode;
   type: ModalType;
   isConfirm: boolean;
   onConfirm: (() => void | Promise<void>) | null;
@@ -29,7 +30,7 @@ interface ModalState {
 export const useModalStore = create<ModalState>((set) => ({
   isOpen: false,
   title: "",
-  message: "",
+  message: null,
   type: "info",
   isConfirm: false,
   onConfirm: null,

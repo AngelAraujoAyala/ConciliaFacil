@@ -49,7 +49,11 @@ interface PriceCardProps {
    * Permite mostrar el spinner solo en el boton correcto.
    */
   activePriceId: string | null;
-  onCheckout: (priceId: string | null) => void;
+  /**
+   * Notifica al padre con el objeto completo del plan seleccionado,
+   * evitando lookups inversos por priceId en PricingPage.
+   */
+  onCheckout: (plan: SubscriptionPlan) => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,7 +101,7 @@ export const PriceCard: React.FC<PriceCardProps> = ({
 
   const handleClick = () => {
     if (!isButtonDisabled) {
-      onCheckout(plan.stripePriceId);
+      onCheckout(plan);
     }
   };
 

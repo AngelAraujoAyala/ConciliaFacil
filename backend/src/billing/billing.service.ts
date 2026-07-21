@@ -162,22 +162,62 @@ export class BillingService {
                 break;
             }
 
-            case 'invoice.payment_failed': {
-                const invoice = event.data.object as Stripe.Invoice;
-                const stripeCustomerId = invoice.customer as string;
+            case 'customer.subscription.updated': {
+                const subscription = event.data.object as Stripe.Subscription;
+                const stripeCustomerId = subscription.customer as string;
+                
+                // En Stripe API v2026-06-24.dahlia, current_period_end vive en los items de la suscripcion
+                const periodEnd = subscription.items.data[0]?.current_period_end || (Math.floor(Date.now() / 1000) + 30 * 24 * 3600);
+                const purchasedPriceId = subscription.items.data[0]?.price.id;
 
-                // Si el pago falla (ej. tarjeta vencida), marcamos su estatus para restringir accesos
+                const planConfig = PLAN_CONFIG[purchasedPriceId] ?? { plan: UserPlan.FREE };
+
                 await this.prisma.user.updateMany({
                     where: { stripeCustomerId },
                     data: {
-                        subscriptionStatus: 'past_due',
-                        isSubscribed: false, // Bloqueamos temporalmente sus características premium
+                        stripePriceId: purchasedPriceId,
+                        subscriptionStatus: subscription.status,
+                        currentPeriodEnd: new Date(periodEnd * 1000),
+                        nextResetDate: new Date(periodEnd * 1000),
+                        plan: planConfig.plan,
+                        isSubscribed: subscription.status === 'active',
+                        cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
                     },
                 });
                 break;
             }
 
-            // Puedes agregar más casos en el futuro, como 'customer.subscription.deleted' para cancelaciones
+            case 'customer.subscription.deleted': {
+                const subscription = event.data.object as Stripe.Subscription;
+                const stripeCustomerId = subscription.customer as string;
+
+                await this.prisma.user.updateMany({
+                    where: { stripeCustomerId },
+                    data: {
+                        plan: UserPlan.FREE,
+                        stripePriceId: null,
+                        stripeSubscriptionId: null,
+                        subscriptionStatus: 'canceled',
+                        isSubscribed: false,
+                        cancelAtPeriodEnd: false,
+                    },
+                });
+                break;
+            }
+
+            case 'invoice.payment_failed': {
+                const invoice = event.data.object as Stripe.Invoice;
+                const stripeCustomerId = invoice.customer as string;
+
+                await this.prisma.user.updateMany({
+                    where: { stripeCustomerId },
+                    data: {
+                        subscriptionStatus: 'past_due',
+                        isSubscribed: false,
+                    },
+                });
+                break;
+            }
         }
 
         return { received: true };

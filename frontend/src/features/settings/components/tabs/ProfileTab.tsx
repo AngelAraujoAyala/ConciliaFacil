@@ -64,7 +64,7 @@ export const ProfileTab: React.FC = () => {
           <FormField id="firstName" label="Nombre" error={errors.firstName?.message}>
             <Input
               id="firstName"
-              placeholder="Angel"
+              placeholder="Tu nombre"
               hasError={!!errors.firstName}
               autoComplete="given-name"
               {...register("firstName")}
@@ -74,24 +74,13 @@ export const ProfileTab: React.FC = () => {
           <FormField id="lastName" label="Apellido" error={errors.lastName?.message}>
             <Input
               id="lastName"
-              placeholder="Araujo"
+              placeholder="Tu apellido"
               hasError={!!errors.lastName}
               autoComplete="family-name"
               {...register("lastName")}
             />
           </FormField>
         </div>
-
-        <FormField id="phone" label="Teléfono (opcional)" error={errors.phone?.message}>
-          <Input
-            id="phone"
-            type="tel"
-            placeholder="+52 55 1234 5678"
-            hasError={!!errors.phone}
-            autoComplete="tel"
-            {...register("phone")}
-          />
-        </FormField>
 
         <div className="space-y-1.5">
           <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -104,9 +93,6 @@ export const ProfileTab: React.FC = () => {
             disabled
             className="w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-400 shadow-xs dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-500"
           />
-          <p className="text-xs text-slate-400 dark:text-slate-500">
-            El correo se gestiona a través de tu proveedor de autenticación.
-          </p>
         </div>
 
         <div className="flex justify-end">

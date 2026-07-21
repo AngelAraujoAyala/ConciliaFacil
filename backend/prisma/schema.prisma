@@ -32,6 +32,7 @@ model User {
   isSubscribed          Boolean        @default(false)
   freeConciliationsLeft Int            @default(1)
   monthlyConciliations  Int            @default(0)
+  monthlyRfcs           Int            @default(0)
   nextResetDate         DateTime       @default(now())
   conciliations         Conciliation[]
   empresas              Empresa[]
@@ -43,6 +44,8 @@ model User {
   stripePriceId          String?   // Identifica qué plan compró (price_...)
   subscriptionStatus     String?   // Estado según Stripe (active, trialing, past_due, canceled)
   currentPeriodEnd       DateTime? // Fin del ciclo de facturación actual de Stripe
+  cancelAtPeriodEnd      Boolean   @default(false) // true cuando hay un downgrade/cancelación programada
+  pendingPriceId         String?   // Price ID del plan al que se va a cambiar en el próximo ciclo
 
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt

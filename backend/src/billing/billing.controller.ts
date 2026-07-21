@@ -1,20 +1,26 @@
 import {
     Controller,
     Post,
+    Get,
+    Query,
     Body,
     UseGuards,
     Req,
     Headers,
     BadRequestException
 } from '@nestjs/common';
-import type { RawBodyRequest } from '@nestjs/common'; // Importación como tipo para isolatedModules
-import type { Request } from 'express'; // Importación como tipo para isolatedModules
+import type { RawBodyRequest } from '@nestjs/common';
+import type { Request } from 'express';
 import { BillingService } from './billing.service';
+import { BillingSubscriptionService } from './billing-subscription.service';
 import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 
 @Controller('billing')
 export class BillingController {
-    constructor(private readonly billingService: BillingService) { }
+    constructor(
+        private readonly billingService: BillingService,
+        private readonly billingSubscriptionService: BillingSubscriptionService,
+    ) { }
 
     @Post('create-checkout-session')
     @UseGuards(SupabaseAuthGuard)
@@ -26,9 +32,35 @@ export class BillingController {
         return this.billingService.createCheckoutSession(userId, priceId);
     }
 
+    @Get('upgrade-preview')
+    @UseGuards(SupabaseAuthGuard)
+    async upgradePreview(
+        @Query('priceId') priceId: string,
+        @Req() req: any
+    ) {
+        const userId = req.user?.id;
+        return this.billingSubscriptionService.previewUpgrade(userId, priceId);
+    }
+
+    @Post('change-plan')
+    @UseGuards(SupabaseAuthGuard)
+    async changePlan(
+        @Body('priceId') priceId: string | null,
+        @Req() req: any
+    ) {
+        const userId = req.user?.id;
+        return this.billingSubscriptionService.processPlanChange(userId, priceId);
+    }
+
+    @Post('cancel-subscription')
+    @UseGuards(SupabaseAuthGuard)
+    async cancelSubscription(@Req() req: any) {
+        const userId = req.user?.id;
+        return this.billingSubscriptionService.cancelSubscription(userId);
+    }
+
     @Post('webhook')
     async handleWebhook(
-        // Al usar 'import type', TypeScript ya no se queja en el decorador
         @Req() req: RawBodyRequest<Request>,
         @Headers('stripe-signature') signature: string,
     ) {

@@ -6,9 +6,9 @@ import { useBillingPortal } from "../../hooks/useBillingPortal";
 import type { UserPlan } from "../../../../types";
 
 const PLAN_LIMITS: Record<UserPlan, { conciliations: number | null; rfcs: number | null; label: string }> = {
-  FREE: { conciliations: 3, rfcs: 1, label: "Plan Gratis" },
-  BASIC: { conciliations: null, rfcs: 5, label: "Plan Básico" },
-  PRO: { conciliations: null, rfcs: null, label: "Plan Pro" },
+  FREE:  { conciliations: 3,    rfcs: 1,    label: "Plan Gratis" },
+  BASIC: { conciliations: null, rfcs: 5,    label: "Plan Básico" },
+  PRO:   { conciliations: null, rfcs: null, label: "Plan Pro" },
 };
 
 const UsageBar: React.FC<{ label: string; used: number; max: number | null }> = ({
@@ -101,8 +101,8 @@ export const BillingTab: React.FC = () => {
               max={limits.conciliations}
             />
             <UsageBar
-              label="RFCs activos"
-              used={profile?.empresas?.length ?? 0}
+              label="RFCs nuevos este mes"
+              used={profile?.monthlyRfcs ?? 0}
               max={limits.rfcs}
             />
           </div>
