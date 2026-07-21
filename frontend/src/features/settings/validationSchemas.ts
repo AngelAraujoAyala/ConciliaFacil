@@ -47,12 +47,9 @@ export type SecurityFormData = z.infer<typeof SecuritySchema>;
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const PreferencesSchema = z.object({
-  theme: z.enum(["light", "dark", "system"], {
+  theme: z.enum(["light", "dark"], {
     message: "Selecciona un tema válido.",
   }),
-  timezone: z.string().min(1, "Selecciona una zona horaria."),
-  emailNotifications: z.boolean(),
-  defaultRfc: z.string().optional(),
 });
 
 export type PreferencesFormData = z.infer<typeof PreferencesSchema>;

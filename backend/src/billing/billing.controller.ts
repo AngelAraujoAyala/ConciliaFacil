@@ -59,6 +59,16 @@ export class BillingController {
         return this.billingSubscriptionService.cancelSubscription(userId);
     }
 
+    @Post('create-portal-session')
+    @UseGuards(SupabaseAuthGuard)
+    async createPortalSession(
+        @Body('returnUrl') returnUrl: string | undefined,
+        @Req() req: any
+    ) {
+        const userId = req.user?.id;
+        return this.billingService.createPortalSession(userId, returnUrl);
+    }
+
     @Post('webhook')
     async handleWebhook(
         @Req() req: RawBodyRequest<Request>,

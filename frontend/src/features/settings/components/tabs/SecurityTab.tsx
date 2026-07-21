@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, Loader2, ShieldCheck, Lock } from "lucide-react";
 
 import { SecuritySchema, type SecurityFormData } from "../../validationSchemas";
 import { supabase } from "../../../../api/supabase";
@@ -74,6 +74,16 @@ const StrengthBar: React.FC<{ value: string }> = ({ value }) => {
 export const SecurityTab: React.FC = () => {
   const [serverError, setServerError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  /** true = cuenta Google/OAuth (sin contraseña), false = cuenta email+password */
+  const [isOAuthUser, setIsOAuthUser] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      const provider = data.session?.user?.app_metadata?.provider;
+      // Solo los usuarios con proveedor "email" tienen contraseña propia
+      setIsOAuthUser(provider !== "email");
+    });
+  }, []);
 
   const {
     control,
@@ -132,70 +142,105 @@ export const SecurityTab: React.FC = () => {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
-        <FormField
-          id="currentPassword"
-          label="Contraseña actual"
-          error={errors.currentPassword?.message}
+      {/* Banner informativo para cuentas Google — solo visible mientras se carga o si es OAuth */}
+      {isOAuthUser === true && (
+        <div
+          role="status"
+          className="flex items-start gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-5 dark:border-slate-700/60 dark:bg-slate-800/40"
         >
-          <PasswordInput
-            id="currentPassword"
-            placeholder="••••••••"
-            hasError={!!errors.currentPassword}
-            {...register("currentPassword")}
-          />
-        </FormField>
-
-        <FormField
-          id="newPassword"
-          label="Nueva contraseña"
-          error={errors.newPassword?.message}
-        >
-          <>
-            <PasswordInput
-              id="newPassword"
-              placeholder="••••••••"
-              hasError={!!errors.newPassword}
-              {...register("newPassword")}
-            />
-            <StrengthBar value={newPassword} />
-          </>
-        </FormField>
-
-        <FormField
-          id="confirmPassword"
-          label="Confirmar contraseña"
-          error={errors.confirmPassword?.message}
-        >
-          <PasswordInput
-            id="confirmPassword"
-            placeholder="••••••••"
-            hasError={!!errors.confirmPassword}
-            {...register("confirmPassword")}
-          />
-        </FormField>
-
-        {serverError && (
-          <p className="rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-300">{serverError}</p>
-        )}
-        {success && (
-          <p className="flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-2.5 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-            <ShieldCheck className="h-4 w-4" />
-            Contraseña actualizada exitosamente.
-          </p>
-        )}
-
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            Actualizar contraseña
-          </button>
+          <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700">
+            <Lock className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+              Contraseña administrada por Google
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+              Tu cuenta fue creada con <strong className="font-semibold text-slate-700 dark:text-slate-300">Google</strong>.
+              La contraseña es gestionada directamente por Google y no puede modificarse desde aquí.
+              Si deseas cambiarla, visita{" "}
+              <a
+                href="https://myaccount.google.com/security"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-indigo-600 underline underline-offset-2 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+              >
+                myaccount.google.com
+              </a>
+              .
+            </p>
+          </div>
         </div>
-      </form>
+      )}
+
+      {/* Formulario — solo visible para cuentas email+password */}
+      {isOAuthUser === false && (
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+          <FormField
+            id="currentPassword"
+            label="Contraseña actual"
+            error={errors.currentPassword?.message}
+          >
+            <PasswordInput
+              id="currentPassword"
+              placeholder="••••••••"
+              hasError={!!errors.currentPassword}
+              {...register("currentPassword")}
+            />
+          </FormField>
+
+          <FormField
+            id="newPassword"
+            label="Nueva contraseña"
+            error={errors.newPassword?.message}
+          >
+            <>
+              <PasswordInput
+                id="newPassword"
+                placeholder="••••••••"
+                hasError={!!errors.newPassword}
+                {...register("newPassword")}
+              />
+              <StrengthBar value={newPassword} />
+            </>
+          </FormField>
+
+          <FormField
+            id="confirmPassword"
+            label="Confirmar contraseña"
+            error={errors.confirmPassword?.message}
+          >
+            <PasswordInput
+              id="confirmPassword"
+              placeholder="••••••••"
+              hasError={!!errors.confirmPassword}
+              {...register("confirmPassword")}
+            />
+          </FormField>
+
+          {serverError && (
+            <p className="rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-300">{serverError}</p>
+          )}
+          {success && (
+            <p className="flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-2.5 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+              <ShieldCheck className="h-4 w-4" />
+              Contraseña actualizada exitosamente.
+            </p>
+          )}
+
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              Actualizar contraseña
+            </button>
+          </div>
+        </form>
+      )}
     </section>
   );
 };
+

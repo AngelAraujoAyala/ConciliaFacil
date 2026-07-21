@@ -30,8 +30,8 @@ const TABS: TabConfig[] = [
   { id: "perfil", label: "Perfil", icon: User },
   { id: "facturacion", label: "Facturación", icon: CreditCard },
   { id: "seguridad", label: "Seguridad", icon: Shield },
-  { id: "preferencias", label: "Preferencias", icon: SlidersHorizontal },
-  { id: "peligro", label: "Zona de Peligro", icon: AlertTriangle, danger: true },
+  { id: "tema", label: "Tema", icon: SlidersHorizontal },
+  { id: "peligro", label: "Eliminar cuenta", icon: AlertTriangle, danger: true },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ const PANELS: Record<SettingsTab, React.ReactElement> = {
   perfil:       <ProfileTab />,
   facturacion:  <BillingTab />,
   seguridad:    <SecurityTab />,
-  preferencias: <PreferencesTab />,
+  tema:         <PreferencesTab />,
   peligro:      <DangerTab />,
 };
 

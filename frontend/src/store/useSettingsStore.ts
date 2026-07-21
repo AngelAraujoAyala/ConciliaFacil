@@ -8,7 +8,7 @@ import {
 } from "../utils/profileIdentity";
 import { DEFAULT_USER_PREFERENCES } from "../features/settings/constants/defaultPreferences";
 
-export type SettingsTab = "perfil" | "facturacion" | "seguridad" | "preferencias" | "peligro";
+export type SettingsTab = "perfil" | "facturacion" | "seguridad" | "tema" | "peligro";
 
 export interface ProfileDraft {
   firstName: string;
@@ -18,10 +18,7 @@ export interface ProfileDraft {
 }
 
 export interface UserPreferences {
-  emailNotifications: boolean;
-  defaultRfc: string;
-  theme: "light" | "dark" | "system";
-  timezone: string;
+  theme: "light" | "dark";
 }
 
 interface SettingsState {
@@ -45,7 +42,7 @@ const INITIAL_STATE: SettingsState = {
     phone: "",
     email: "",
   },
-  preferences: { ...DEFAULT_USER_PREFERENCES, defaultRfc: DEFAULT_USER_PREFERENCES.defaultRfc ?? "" },
+  preferences: { ...DEFAULT_USER_PREFERENCES },
 };
 
 export const useSettingsStore = create<SettingsStore>()((set) => ({

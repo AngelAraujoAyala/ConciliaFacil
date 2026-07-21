@@ -222,4 +222,26 @@ export class BillingService {
 
         return { received: true };
     }
+
+    async createPortalSession(userId: string, returnUrl?: string) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user) {
+            throw new NotFoundException('Usuario no encontrado');
+        }
+
+        const stripeCustomerId = user.stripeCustomerId;
+        if (!stripeCustomerId) {
+            throw new BadRequestException('No tienes una cuenta de cliente de facturación activa.');
+        }
+
+        const session = await this.stripe.billingPortal.sessions.create({
+            customer: stripeCustomerId,
+            return_url: returnUrl ?? this.frontendUrl,
+        });
+
+        return { url: session.url };
+    }
 }

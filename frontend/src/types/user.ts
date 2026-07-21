@@ -45,10 +45,7 @@ export interface UserProfile {
 
 /** Preferencias de aplicación — contrato para GET/PATCH /users/preferences. */
 export interface UserPreferencesPayload {
-  theme: "light" | "dark" | "system";
-  timezone: string;
-  emailNotifications: boolean;
-  defaultRfc?: string | null;
+  theme: "light" | "dark";
 }
 
 /** Payload para actualizar perfil en Supabase Auth. */

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { Download, Trash2, AlertTriangle, Loader2, X } from "lucide-react";
-import { useExportData } from "../../hooks/useExportData";
+import { Trash2, AlertTriangle, Loader2, X } from "lucide-react";
 import { useDeleteAccount } from "../../hooks/useDeleteAccount";
 
 const DeleteConfirmModal: React.FC<{
@@ -79,7 +78,6 @@ const DeleteConfirmModal: React.FC<{
 
 export const DangerTab: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
-  const { mutate: exportData, isPending: isExporting } = useExportData();
   const { mutate: deleteAccount, isPending: isDeleting } = useDeleteAccount();
 
   const handleDeleteConfirm = () => {
@@ -100,32 +98,10 @@ export const DangerTab: React.FC = () => {
 
       <section className="space-y-6">
         <div className="space-y-0.5">
-          <h2 className="text-base font-semibold text-red-650 dark:text-red-500">Zona de Peligro</h2>
+          <h2 className="text-base font-semibold text-red-600 dark:text-red-500">Eliminar cuenta</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Acciones irreversibles relacionadas con tu cuenta. Procede con cuidado.
+            Esta acción es permanente e irreversible. Todos tus datos serán eliminados.
           </p>
-        </div>
-
-        <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900">
-          <div>
-            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Exportar datos de la cuenta</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Descarga un archivo JSON con tu perfil, empresas y conciliaciones.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => exportData()}
-            disabled={isExporting}
-            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-          >
-            {isExporting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-            Exportar datos
-          </button>
         </div>
 
         <div className="flex flex-col gap-4 rounded-xl border border-red-200 bg-red-50 p-5 sm:flex-row sm:items-center sm:justify-between dark:border-red-950/40 dark:bg-red-950/20">

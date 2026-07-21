@@ -37,12 +37,9 @@ export function useUpdatePreferences() {
       queryClient.setQueryData(settingsQueryKeys.user.preferences, data);
       setPreferences({
         theme: data.theme,
-        timezone: data.timezone,
-        emailNotifications: data.emailNotifications,
-        defaultRfc: data.defaultRfc ?? "",
       });
       applyTheme(data.theme);
-      settingsFeedback.success("Preferencias guardadas.");
+      settingsFeedback.success("Tema actualizado.");
     },
     onError: (error: unknown) => {
       settingsFeedback.error("No se pudieron guardar las preferencias", {

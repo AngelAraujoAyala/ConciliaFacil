@@ -6,7 +6,7 @@ export const SETTINGS_TABS = [
   "perfil",
   "facturacion",
   "seguridad",
-  "preferencias",
+  "tema",
   "peligro",
 ] as const satisfies readonly SettingsTab[];
 

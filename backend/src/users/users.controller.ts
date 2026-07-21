@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Patch, UseGuards } from '@nestjs/common';
 import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { UsersService } from './users.service';
@@ -32,5 +32,13 @@ export class UsersController {
     @Body() dto: UpdateUserPreferencesDto,
   ) {
     return this.usersService.updatePreferences(userId, email, dto);
+  }
+
+  @Delete('me')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteMyAccount(
+    @GetUser('id') userId: string,
+  ) {
+    return this.usersService.deleteAccount(userId);
   }
 }

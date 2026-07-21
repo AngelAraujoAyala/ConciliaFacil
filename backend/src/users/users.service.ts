@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createClient } from '@supabase/supabase-js';
 import { AppTheme, type UserPreferences } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserPreferencesDto } from './dto/update-user-preferences.dto';
@@ -20,7 +22,10 @@ function calcularProximoReset(from: Date = new Date()): Date {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
 
   async getProfile(id: string, email: string) {
     const includeOpts = {
@@ -95,6 +100,26 @@ export class UsersService {
     return user;
   }
 
+  async deleteAccount(userId: string): Promise<void> {
+    // 1. Borrar el registro en nuestra BD (cascade elimina conciliaciones, empresas, preferencias)
+    await this.prisma.user.delete({ where: { id: userId } });
+
+    // 2. Borrar el usuario de Supabase Auth usando el service_role key
+    const supabaseUrl = this.configService.get<string>('SUPABASE_URL')!;
+    const serviceRoleKey = this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    const { error } = await adminClient.auth.admin.deleteUser(userId);
+    if (error) {
+      console.error(`⚠️ Error al eliminar usuario ${userId} de Supabase Auth:`, error.message);
+      // No lanzamos excepción: el usuario ya no existe en nuestra BD.
+      // Supabase Auth lo limpiará eventualmente o quedará huérfano inofensivo.
+    }
+  }
+
   async getPreferences(
     userId: string,
     email: string,
@@ -117,18 +142,9 @@ export class UsersService {
       create: {
         userId,
         theme: dto.theme ?? AppTheme.light,
-        timezone: dto.timezone ?? DEFAULT_USER_PREFERENCES.timezone,
-        emailNotifications:
-          dto.emailNotifications ?? DEFAULT_USER_PREFERENCES.emailNotifications,
-        defaultRfc: dto.defaultRfc ?? null,
       },
       update: {
         ...(dto.theme !== undefined ? { theme: dto.theme } : {}),
-        ...(dto.timezone !== undefined ? { timezone: dto.timezone } : {}),
-        ...(dto.emailNotifications !== undefined
-          ? { emailNotifications: dto.emailNotifications }
-          : {}),
-        ...(dto.defaultRfc !== undefined ? { defaultRfc: dto.defaultRfc } : {}),
       },
     });
 
@@ -148,9 +164,6 @@ export class UsersService {
       data: {
         userId,
         theme: AppTheme.light,
-        timezone: DEFAULT_USER_PREFERENCES.timezone,
-        emailNotifications: DEFAULT_USER_PREFERENCES.emailNotifications,
-        defaultRfc: DEFAULT_USER_PREFERENCES.defaultRfc,
       },
     });
   }
@@ -160,9 +173,6 @@ export class UsersService {
   ): UserPreferencesResponse {
     return {
       theme: preferences.theme,
-      timezone: preferences.timezone,
-      emailNotifications: preferences.emailNotifications,
-      ...(preferences.defaultRfc ? { defaultRfc: preferences.defaultRfc } : {}),
     };
   }
 }
