@@ -5,7 +5,7 @@ import Layout from "../components/Layout";
 import { DashboardPage } from "../features/dashboard/pages/DashboardPage";
 import ConciliationPage from "../features/conciliation/pages/ConciliationPage";
 import { HistoryPage } from "../features/history/pages/HistoryPage";
-import { SupportPage } from "../pages/SupportPage";
+import { SupportPage } from "../features/support/pages/SupportPage";
 import { PricingPage } from "../features/billing/pages/PricingPage";
 import { SettingsLayout } from "../features/settings/components/SettingsLayout";
 

@@ -7,6 +7,7 @@ import { ConciliationsModule } from './conciliations/reconciliations.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { BillingModule } from './billing/billing.module';
+import { SupportModule } from './support/support.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { BillingModule } from './billing/billing.module';
     AuthModule,
     UsersModule,
     BillingModule,
+    SupportModule,
   ],
   controllers: [AppController],
   providers: [AppService],
