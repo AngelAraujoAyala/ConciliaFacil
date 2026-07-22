@@ -105,7 +105,7 @@ export default function LandingPage() {
                 Clasificación Automatizada
               </p>
               <p className="text-sm text-slate-500 mt-2">
-                Detección inmediata mediante auditoría de semáforo visual.
+                Detección inmediata mediante semáforo visual de conciliación.
               </p>
             </div>
           </div>
@@ -150,7 +150,7 @@ export default function LandingPage() {
               </h3>
               <p className="text-sm text-slate-600 leading-relaxed">
                 Aprovechamos las APIs nativas del cliente para procesar los
-                datos directamente en memoria RAM. Ideal para auditorías
+                datos directamente en memoria RAM. Ideal para conciliaciones
                 confidenciales exigentes.
               </p>
             </div>
@@ -159,7 +159,7 @@ export default function LandingPage() {
             <div className="p-6 rounded-xl border border-slate-200 bg-slate-50 hover:shadow-md transition-all space-y-3 text-left">
               <span className="text-2xl">🚦</span>
               <h3 className="font-bold text-slate-900 text-lg">
-                Auditoría Visual de Semáforo
+                Conciliación Visual con Semáforo
               </h3>
               <p className="text-sm text-slate-600 leading-relaxed">
                 Visualización instantánea en verde para coincidencias exactas,
@@ -236,7 +236,7 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-[radial-linear(circle_at_top_right,var(--tw-linear-stops))] from-indigo-950 via-slate-900 to-slate-950 opacity-70"></div>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6 relative z-10">
           <h2 className="text-3xl sm:text-4xl font-black tracking-tight">
-            ¿Listo para recuperar tu tiempo de auditoría?
+            ¿Listo para optimizar tu tiempo de conciliación?
           </h2>
           <p className="text-slate-400 max-w-xl mx-auto text-sm sm:text-base">
             Prueba el poder de procesamiento de ConciliaFácil hoy mismo. Sin

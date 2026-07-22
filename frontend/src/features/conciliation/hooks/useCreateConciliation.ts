@@ -43,7 +43,7 @@ export function useCreateConciliation() {
 
       if (variables.status === "COMPLETED") {
         toast.success("¡Excelente!", {
-          description: "Auditoría cerrada y marcada como COMPLETADA con éxito.",
+          description: "Conciliación cerrada y marcada como COMPLETADA con éxito.",
           duration: 5000,
         });
       } else {

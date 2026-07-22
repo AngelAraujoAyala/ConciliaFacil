@@ -64,7 +64,7 @@ export default function ManualMatchPanel() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-bold text-gray-800 dark:text-slate-100">
-            Conciliación manual M:N
+            Conciliación manual múltiple
           </h3>
           <p className="text-xs text-gray-400 dark:text-slate-400">
             Selecciona movimientos bancarios y facturas, luego confirma el

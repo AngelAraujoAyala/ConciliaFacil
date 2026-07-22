@@ -326,7 +326,7 @@ function buildSummaryWorksheet(
     views: [{ showGridLines: true }],
   });
 
-  worksheet.getCell("A1").value = `Resumen Ejecutivo de Auditoría - ${detail.title}`;
+  worksheet.getCell("A1").value = `Resumen Ejecutivo de Conciliación - ${detail.title}`;
   worksheet.getCell("A1").font = {
     name: "Arial",
     size: 14,
@@ -585,7 +585,7 @@ export async function exportConciliationToExcel(detail: ConciliationDetail): Pro
   const anchor = document.createElement("a");
   anchor.href = url;
 
-  const fileName = `Auditoria_${detail.title.replace(/[^a-zA-Z0-9]/g, "_")}_${new Date().toISOString().split("T")[0]}.xlsx`;
+  const fileName = `Conciliacion_${detail.title.replace(/[^a-zA-Z0-9]/g, "_")}_${new Date().toISOString().split("T")[0]}.xlsx`;
   anchor.download = fileName;
   anchor.click();
   window.URL.revokeObjectURL(url);

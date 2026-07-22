@@ -37,7 +37,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ selectedConciliation
   const actions = [
     {
       title: "Nueva Conciliación",
-      description: "Ejecutar cruce M:N automático o manual.",
+      description: "Ejecutar cruce automático.",
       icon: <PlusCircle className="h-5 w-5" />,
       color: "bg-indigo-600 hover:bg-indigo-700 text-white",
       descColor: "text-indigo-100",
@@ -45,7 +45,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ selectedConciliation
     },
     {
       title: "Soporte y Ayuda",
-      description: "Centro de ayuda y plantillas de Excel.",
+      description: "Centro de ayuda y plantilla de Excel.",
       icon: <HelpCircle className="h-5 w-5" />,
       color:
         "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700",
@@ -78,19 +78,17 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ selectedConciliation
           <button
             onClick={handleResume}
             disabled={!selectedConciliationId || isLoading}
-            className={`group flex w-full items-center justify-between rounded-xl p-4 text-left transition-all duration-300 ${
-              selectedConciliationId
-                ? "cursor-pointer border border-amber-200 bg-amber-50 text-amber-700 shadow-sm hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-950/60"
-                : "cursor-not-allowed border border-slate-100 bg-slate-50 text-slate-400 opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500"
-            }`}
+            className={`group flex w-full items-center justify-between rounded-xl p-4 text-left transition-all duration-300 ${selectedConciliationId
+              ? "cursor-pointer border border-amber-200 bg-amber-50 text-amber-700 shadow-sm hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-950/60"
+              : "cursor-not-allowed border border-slate-100 bg-slate-50 text-slate-400 opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500"
+              }`}
           >
             <div className="flex items-center gap-3">
               <div
-                className={`rounded-lg p-2 ${
-                  selectedConciliationId
-                    ? "bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400"
-                    : "bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500"
-                }`}
+                className={`rounded-lg p-2 ${selectedConciliationId
+                  ? "bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400"
+                  : "bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500"
+                  }`}
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

@@ -38,8 +38,7 @@ export const HistoryPage: React.FC = () => {
       <div>
         <h1 className="ui-page-title">Historial de Conciliaciones</h1>
         <p className="ui-page-subtitle">
-          Audita, consulta y descarga los reportes y snapshots de tus ejercicios
-          de conciliación previos.
+          Consulta, revisa y descarga los reportes de tus conciliaciones previas.
         </p>
       </div>
 

@@ -60,6 +60,26 @@ export default function InvoiceUploadStep() {
         onFilesSelected={handleInvoiceFilesSelected}
       />
 
+      {/* Botón de volver al Paso 1 siempre visible debajo de la zona de drop */}
+      <div className="flex justify-start">
+        <button
+          onClick={() => setCurrentStep("BANK_UPLOAD")}
+          className="inline-flex items-center space-x-2 text-sm font-medium text-gray-600 dark:text-slate-350 hover:text-gray-900 dark:hover:text-white bg-gray-50 hover:bg-gray-100 dark:bg-slate-800/40 dark:hover:bg-slate-800/80 px-4 py-2 rounded-xl border border-gray-200/60 dark:border-slate-700/60 transition-all duration-200 shadow-xs"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            stroke="currentColor"
+            className="w-4 h-4"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+          </svg>
+          <span>Volver a Paso 1: Movimientos Bancarios</span>
+        </button>
+      </div>
+
       {isLoading && (
         <div className="text-center py-4 text-sm text-blue-600 animate-pulse font-medium">
           Leyendo y validando XMLs del SAT...
@@ -147,14 +167,7 @@ export default function InvoiceUploadStep() {
             ))}
           </div>
 
-          <div className="flex justify-between items-center pt-2">
-            <button
-              onClick={() => setCurrentStep("BANK_UPLOAD")}
-              className="text-sm text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200 font-medium"
-            >
-              ⬅ Volver a revisar banco
-            </button>
-
+          <div className="flex justify-end pt-2">
             <button
               onClick={runConciliation}
               disabled={hasMixedRfcsError}

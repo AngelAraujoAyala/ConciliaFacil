@@ -82,7 +82,7 @@ export const HistoryDetailPanel: React.FC<HistoryDetailPanelProps> = ({
           />
         </svg>
         <p className="text-sm font-medium">
-          Selecciona una conciliación para auditar los detalles del snapshot.
+          Selecciona una conciliación para ver los detalles del reporte.
         </p>
       </div>
     );
@@ -92,7 +92,7 @@ export const HistoryDetailPanel: React.FC<HistoryDetailPanelProps> = ({
     return (
       <div className="h-full flex flex-col items-center justify-center p-6 min-h-87.5">
         <div className="mb-2 h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-600 dark:border-slate-700 dark:border-t-indigo-400" />
-        <p className="text-xs text-slate-500 dark:text-slate-400">Extrayendo registros JSONB...</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">Cargando detalles de la conciliación...</p>
       </div>
     );
   }
@@ -103,16 +103,13 @@ export const HistoryDetailPanel: React.FC<HistoryDetailPanelProps> = ({
     <div className="space-y-6 animate-fade-in">
       <div>
         <div className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-          Detalle de Auditoría
+          Detalle de Conciliación
         </div>
         <h2 className="mt-0.5 text-xl font-bold text-slate-900 dark:text-slate-100">
           {detail.title}
         </h2>
         <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
           ID: <span className="font-mono text-[11px]">{detail.id}</span>
-          {detail.schemaVersion && (
-            <span className="ml-2">· v{detail.schemaVersion}</span>
-          )}
         </p>
       </div>
 
@@ -139,11 +136,11 @@ export const HistoryDetailPanel: React.FC<HistoryDetailPanelProps> = ({
 
       <div className="space-y-3">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          Estructura del Snapshot
+          Resumen de la Conciliación
         </h3>
         <div className="space-y-2">
           <div className="ui-stat-box flex items-center justify-between p-2.5 text-xs font-medium text-slate-700 dark:text-slate-300">
-            <span>Grupos M:N:</span>
+            <span>Grupos Múltiples:</span>
             <span className="ui-stat-chip">
               {metrics.realMatchesCount} conciliados / {detail.matches.length}{" "}
               grupos
@@ -210,7 +207,7 @@ export const HistoryDetailPanel: React.FC<HistoryDetailPanelProps> = ({
                   d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                 />
               </svg>
-              Exportar Auditoría (.XLSX)
+              Exportar Conciliación (.XLSX)
             </>
           )}
         </button>

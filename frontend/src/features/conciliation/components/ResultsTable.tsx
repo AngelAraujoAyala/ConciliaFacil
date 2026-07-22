@@ -36,7 +36,6 @@ export default function ResultsTable() {
     activeConciliationId,
     activeConciliationTitle,
     rfcEmpresaActual,
-    hasMixedRfcsError,
     rerunConciliation,
     processInvoiceUpload,
     clearMixedRfcsError,
@@ -322,7 +321,7 @@ export default function ResultsTable() {
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-800 w-full max-w-md p-6 transform transition-all animate-in fade-in zoom-in-95 duration-200">
             <h3 className="text-base font-bold text-gray-900 dark:text-slate-100 mb-1">
               {selectedStatus === "COMPLETED"
-                ? "🔒 Finalizar y Cerrar Auditoría"
+                ? "🔒 Finalizar y Cerrar Conciliación"
                 : "📁 Guardar Progreso Actual"}
             </h3>
             <p className="text-xs text-gray-500 dark:text-slate-450 mb-4">
