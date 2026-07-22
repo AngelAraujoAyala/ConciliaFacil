@@ -255,10 +255,36 @@ export default function LandingPage() {
 
       {/* CORPORATE FOOTER */}
       <footer className="bg-white border-t border-slate-200 py-8 text-center text-xs text-slate-400 font-medium">
-        <p>
-          © 2026 ConciliaFácil. Todos los derechos reservados. Procesamiento
-          local verificado.
-        </p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+          <div className="flex justify-center items-center gap-2">
+            <img
+              src="/cf_logo.png"
+              alt="ConciliaFácil Logo"
+              className="h-12 w-auto object-contain"
+            />
+            <span className="font-bold text-sm tracking-wider text-slate-700">
+              ConciliaFácil
+            </span>
+          </div>
+          <p>
+            © 2026 ConciliaFácil. Todos los derechos reservados. Procesamiento local verificado.
+          </p>
+          <div className="flex justify-center gap-6">
+            <Link
+              to="/legal/terminos"
+              className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors underline underline-offset-2"
+            >
+              Términos de Servicio
+            </Link>
+            <span className="text-slate-350">•</span>
+            <Link
+              to="/legal/privacidad"
+              className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors underline underline-offset-2"
+            >
+              Política de Privacidad
+            </Link>
+          </div>
+        </div>
       </footer>
     </div>
   );

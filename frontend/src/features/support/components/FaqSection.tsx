@@ -20,10 +20,10 @@ export const FaqSection: React.FC = () => {
     },
     {
       question: "¿Cuántas conciliaciones puedo hacer al mes?",
-      answer: "Depende de tu plan: Gratuito incluye 3 conciliaciones mensuales, Básico incluye 15 y Pro incluye conciliaciones ilimitadas. El contador se reinicia automáticamente el primer día de cada mes."
+      answer: "Depende de tu plan: Gratuito incluye 3 conciliaciones mensuales, Básico y Pro incluyen conciliaciones ilimitadas, BASIC te permite conciliar 5 RFCs distintos, PRO son RFCs ilimitados. El contador se reinicia automáticamente el primer día de cada mes."
     },
     {
-      question: "¿Qué pasa si llego al límite de conciliaciones de mi plan?",
+      question: "¿Qué pasa si llego al límite de RFCs de mi plan?",
       answer: "Cuando alcanzas el límite mensual, el botón de nueva conciliación se desactiva hasta que el contador se reinicie o hagas un upgrade. Puedes ver tu uso actual en el Dashboard principal."
     },
     {
@@ -36,7 +36,7 @@ export const FaqSection: React.FC = () => {
     },
     {
       question: "¿Mis archivos y datos están seguros?",
-      answer: "Sí. Toda la comunicación está cifrada con HTTPS/TLS. Los archivos que subes se procesan en memoria durante la conciliación y no se almacenan de forma permanente en nuestros servidores."
+      answer: "Sí. Toda la comunicación está cifrada. Los archivos que subes se procesan en memoria durante la conciliación y no se almacenan de forma directa en nuestros servidores."
     },
     {
       question: "¿Puedo consultar mis conciliaciones anteriores?",

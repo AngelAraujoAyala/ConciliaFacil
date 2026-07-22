@@ -19,6 +19,13 @@ export const LoginForm: React.FC = () => {
   return (
     <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-slate-900 rounded-xl shadow-md border border-slate-100 dark:border-slate-800">
       <div className="space-y-2 text-center">
+        <div className="flex justify-center mb-3">
+          <img
+            src="/cf_logo.png"
+            alt="ConciliaFácil Logo"
+            className="h-20 w-auto object-contain"
+          />
+        </div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
           Ingresar a ConciliaFácil
         </h1>

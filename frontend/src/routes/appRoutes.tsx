@@ -13,6 +13,8 @@ import RegisterPage from "../features/auth/pages/RegisterPage";
 import { LoginPage } from "../features/auth/pages/LoginPage";
 import { ProtectedRoute } from "../features/auth/components/ProtectedRoute";
 import AuthCallback from "../features/auth/pages/AuthCallback";
+import TerminosCondicionesPage from "../pages/TerminosCondicionesPage";
+import AvisoPrivacidadPage from "../pages/AvisoPrivacidadPage";
 
 export const router = createBrowserRouter([
   {
@@ -40,10 +42,16 @@ export const router = createBrowserRouter([
     element: <AuthCallback />,
   },
   {
-    // Ruta publica — accesible sin autenticacion para que usuarios FREE
-    // puedan upgrade y para que la landing page enlace a ella.
     path: "/pricing",
     element: <PricingPage />,
+  },
+  {
+    path: "/legal/terminos",
+    element: <TerminosCondicionesPage />,
+  },
+  {
+    path: "/legal/privacidad",
+    element: <AvisoPrivacidadPage />,
   },
   {
     path: "/dashboard",

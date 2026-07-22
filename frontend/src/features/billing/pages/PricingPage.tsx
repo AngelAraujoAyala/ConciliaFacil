@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useBillingStore } from "../../../store/useBillingStore";
 import { PriceCard } from "../components/PriceCard";
 import type { SubscriptionPlan } from "../components/PriceCard";
@@ -328,7 +329,25 @@ export const PricingPage: React.FC = () => {
     if (actionType === "DOWNGRADE") {
       showConfirm({
         title: `Cambiar a Plan ${plan.name}`,
-        message: `Tu plan actual permanecerá activo hasta el fin del ciclo de cobro. A partir de entonces se aplicará el nuevo plan. ¿Deseas programar el cambio?`,
+        message: (
+          <span>
+            Tu plan actual permanecerá activo hasta el fin del ciclo de cobro. A partir de entonces se aplicará el nuevo plan. ¿Deseas programar el cambio?
+            <br />
+            <br />
+            <span className="text-xs text-slate-400 dark:text-slate-500">
+              Al confirmar tu suscripción, aceptas nuestros{" "}
+              <a
+                href="/legal/terminos"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-indigo-600 dark:hover:text-indigo-400"
+              >
+                Términos de Cancelación y Servicio
+              </a>
+              .
+            </span>
+          </span>
+        ),
         type: "warning",
         onConfirm: async () => {
           if (!plan.stripePriceId) return;
@@ -374,7 +393,21 @@ export const PricingPage: React.FC = () => {
               a tu tarjeta registrada, correspondiente a los días restantes de tu ciclo actual.
               <br />
               <br />
-              Tu plan cambiará al instante y tu próxima renovación mensual será de {plan.price}. ¿Confirmas el cambio?
+              Tu plan cambiará al instante y tu próxima renovación mensual será de {plan.price}.
+              <br />
+              <br />
+              <span className="text-xs text-slate-400 dark:text-slate-500">
+                Al confirmar tu suscripción, aceptas nuestros{" "}
+                <a
+                  href="/legal/terminos"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-indigo-600 dark:hover:text-indigo-400"
+                >
+                  Términos de Cancelación y Servicio
+                </a>
+                .
+              </span>
             </span>
           ),
           type: "info",
@@ -571,20 +604,20 @@ export const PricingPage: React.FC = () => {
         <footer className="mt-14 text-center text-xs text-slate-400 dark:text-slate-500">
           <p>
             Al suscribirte aceptas nuestros{" "}
-            <a
-              href="/terminos"
+            <Link
+              to="/legal/terminos"
               className="underline underline-offset-2 hover:text-slate-600 dark:hover:text-slate-350 transition-colors"
             >
-              Terminos de Servicio
-            </a>{" "}
+              Términos de Servicio
+            </Link>{" "}
             y{" "}
-            <a
-              href="/privacidad"
+            <Link
+              to="/legal/privacidad"
               className="underline underline-offset-2 hover:text-slate-600 dark:hover:text-slate-350 transition-colors"
             >
-              Politica de Privacidad
-            </a>
-            . Puedes cancelar tu suscripcion en cualquier momento desde tu
+              Política de Privacidad
+            </Link>
+            . Puedes cancelar tu suscripción en cualquier momento desde tu
             perfil. Los cargos son en MXN e incluyen IVA.
           </p>
         </footer>

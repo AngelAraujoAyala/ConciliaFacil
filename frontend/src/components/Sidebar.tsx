@@ -42,16 +42,26 @@ export default function Sidebar() {
       <div>
         {/* Header del Sidebar */}
         <div
-          className={`p-4 flex items-center ${isExpanded ? "justify-between" : "justify-center"}`}
+          className={`py-4 flex items-center justify-between ${isExpanded ? "pl-2 pr-4" : "justify-center px-0"}`}
         >
-          {isExpanded && (
-            <span className="font-bold text-lg tracking-wider text-emerald-400 animate-in fade-in duration-200">
-              ConciliaFácil
-            </span>
+          {isExpanded ? (
+            <div className="flex items-center gap-0 animate-in fade-in duration-200 overflow-hidden -ml-2">
+              <img
+                src="/cf_logo.png"
+                alt="ConciliaFácil Logo"
+                className="h-12 w-auto object-contain -mr-6"
+              />
+              <span className="text-lg tracking-wide select-none whitespace-nowrap">
+                <span className="font-extrabold text-slate-100">Concilia</span>
+                <span className="font-semibold bg-linear-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent">Fácil</span>
+              </span>
+            </div>
+          ) : (
+            <div className="h-12 w-0 overflow-hidden" /> /* Espaciador invisible para mantener la consistencia de altura */
           )}
           <button
             onClick={toggleSidebar}
-            className="p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-slate-800 transition-colors shrink-0"
           >
             {isExpanded ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -127,6 +137,25 @@ export default function Sidebar() {
             Soporte
           </span>
         </NavLink>
+
+        {/* Enlaces Legales cuando está expandido */}
+        {isExpanded && (
+          <div className="pt-2 px-3 pb-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-500 border-t border-slate-800/60 animate-in fade-in duration-200">
+            <NavLink
+              to="/legal/terminos"
+              className="hover:text-slate-300 transition-colors underline underline-offset-2"
+            >
+              Términos
+            </NavLink>
+            <span>•</span>
+            <NavLink
+              to="/legal/privacidad"
+              className="hover:text-slate-300 transition-colors underline underline-offset-2"
+            >
+              Privacidad
+            </NavLink>
+          </div>
+        )}
       </div>
     </div>
   );

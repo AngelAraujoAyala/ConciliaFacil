@@ -52,6 +52,13 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
   return (
     <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 p-8 shadow-xl border border-gray-100 dark:border-slate-800">
       <div className="mb-6 text-center">
+        <div className="flex justify-center mb-3">
+          <img
+            src="/cf_logo.png"
+            alt="ConciliaFácil Logo"
+            className="h-20 w-auto object-contain"
+          />
+        </div>
         <h2 className="text-2xl font-bold tracking-tight text-gray-950 dark:text-slate-100">
           Crea tu cuenta en ConciliaFácil
         </h2>
@@ -130,6 +137,27 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
             'Registrarse'
           )}
         </button>
+
+        <p className="text-center text-xs text-gray-400 dark:text-slate-500 mt-4 leading-relaxed">
+          Al crear tu cuenta, aceptas nuestros{' '}
+          <a
+            href="/legal/terminos"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-gray-600 dark:hover:text-slate-350 transition"
+          >
+            Términos de Servicio
+          </a>{' '}
+          y{' '}
+          <a
+            href="/legal/privacidad"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-gray-600 dark:hover:text-slate-350 transition"
+          >
+            Política de Privacidad
+          </a>
+        </p>
       </form>
     </div>
   );

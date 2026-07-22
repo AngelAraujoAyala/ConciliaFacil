@@ -5,6 +5,7 @@ import {
   Shield,
   SlidersHorizontal,
   AlertTriangle,
+  Scale,
   type LucideIcon,
 } from "lucide-react";
 import type { SettingsTab } from "../../../store/useSettingsStore";
@@ -14,6 +15,7 @@ import { BillingTab } from "./tabs/BillingTab";
 import { SecurityTab } from "./tabs/SecurityTab";
 import { PreferencesTab } from "./tabs/PreferencesTab";
 import { DangerTab } from "./tabs/DangerTab";
+import { LegalTab } from "./tabs/LegalTab";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuración de pestañas
@@ -31,6 +33,7 @@ const TABS: TabConfig[] = [
   { id: "facturacion", label: "Facturación", icon: CreditCard },
   { id: "seguridad", label: "Seguridad", icon: Shield },
   { id: "tema", label: "Tema", icon: SlidersHorizontal },
+  { id: "legal", label: "Legal y Privacidad", icon: Scale },
   { id: "peligro", label: "Eliminar cuenta", icon: AlertTriangle, danger: true },
 ];
 
@@ -43,6 +46,7 @@ const PANELS: Record<SettingsTab, React.ReactElement> = {
   facturacion:  <BillingTab />,
   seguridad:    <SecurityTab />,
   tema:         <PreferencesTab />,
+  legal:        <LegalTab />,
   peligro:      <DangerTab />,
 };
 

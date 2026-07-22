@@ -8,7 +8,7 @@ import {
 } from "../utils/profileIdentity";
 import { DEFAULT_USER_PREFERENCES } from "../features/settings/constants/defaultPreferences";
 
-export type SettingsTab = "perfil" | "facturacion" | "seguridad" | "tema" | "peligro";
+export type SettingsTab = "perfil" | "facturacion" | "seguridad" | "tema" | "peligro" | "legal";
 
 export interface ProfileDraft {
   firstName: string;
