@@ -5,19 +5,13 @@ const BANKS = [
     { name: 'BBVA', color: '#5C4ABE' },
     { name: 'Santander', color: '#EC0000' },
     { name: 'Banorte', color: '#D4001A' },
-    { name: 'Scotiabank', color: '#EC111A' },
     { name: 'HSBC', color: '#DB0011' },
-    { name: 'Banamex', color: '#00539F' },
+    { name: 'Citibanamex', color: '#00539F' },
     { name: 'Stripe', color: '#6772E5' },
-    { name: 'Mercado Pago', color: '#009EE3' },
-    { name: 'BAC', color: '#1E3A8A' },
-    { name: 'Inbursa', color: '#0066CC' },
-    { name: 'Afirme', color: '#FF6B00' },
-    { name: 'Banbajío', color: '#005B9A' },
 ];
 
-// Duplicate for seamless infinite loop
-const ITEMS = [...BANKS, ...BANKS];
+// Triplicate for seamless infinite loop on wide viewports (6 items * 3 = 18 items)
+const ITEMS = [...BANKS, ...BANKS, ...BANKS];
 
 export const LogoMarquee: React.FC = () => {
     return (
@@ -29,24 +23,24 @@ export const LogoMarquee: React.FC = () => {
 
             {/* Section label */}
             <p className="text-center text-xs font-medium text-slate-600 uppercase tracking-widest mb-6">
-                Compatible con los principales bancos y plataformas
+                Compatible con los formatos de los principales bancos en México
             </p>
 
             {/* Marquee track */}
             <div className="flex">
                 <motion.div
                     className="flex items-center gap-10 shrink-0"
-                    animate={{ x: ['0%', '-50%'] }}
+                    animate={{ x: ['0%', '-33.333%'] }}
                     transition={{
                         repeat: Infinity,
-                        duration: 28,
+                        duration: 15,
                         ease: 'linear',
                     }}
                 >
                     {ITEMS.map((bank, index) => (
                         <div
                             key={`${bank.name}-${index}`}
-                            className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:border-white/20 transition-colors shrink-0 select-none"
+                            className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-white/4 border border-white/[0.07] hover:border-white/20 transition-colors shrink-0 select-none"
                         >
                             {/* Color dot accent */}
                             <span

@@ -19,6 +19,9 @@ export const SmoothScroll: React.FC<SmoothScrollProps> = ({ children }) => {
             touchMultiplier: 2,
         });
 
+        // Guardar la referencia en window para poder consumirla desde los botones
+        (window as any).lenis = lenis;
+
         function raf(time: number) {
             lenis.raf(time);
             requestAnimationFrame(raf);
@@ -32,6 +35,7 @@ export const SmoothScroll: React.FC<SmoothScrollProps> = ({ children }) => {
         return () => {
             cancelAnimationFrame(frameId);
             lenis.destroy();
+            delete (window as any).lenis;
         };
     }, []);
 

@@ -10,10 +10,9 @@ import { PricingPage } from "../features/billing/pages/PricingPage";
 import { SettingsLayout } from "../features/settings/components/SettingsLayout";
 import { SmoothScroll } from "../features/landing/components/SmoothScroll";
 
-import RegisterPage from "../features/auth/pages/RegisterPage";
-import { LoginPage } from "../features/auth/pages/LoginPage";
 import { ProtectedRoute } from "../features/auth/components/ProtectedRoute";
 import AuthCallback from "../features/auth/pages/AuthCallback";
+import ResetPasswordPage from "../features/auth/pages/ResetPasswordPage";
 import TerminosCondicionesPage from "../pages/TerminosCondicionesPage";
 import AvisoPrivacidadPage from "../pages/AvisoPrivacidadPage";
 
@@ -29,23 +28,19 @@ export const router = createBrowserRouter([
   },
   {
     path: "/register",
-    element: (
-      <ProtectedRoute requireAuth={false}>
-        <RegisterPage />
-      </ProtectedRoute>
-    ),
+    element: <Navigate to="/" replace />,
   },
   {
     path: "/login",
-    element: (
-      <ProtectedRoute requireAuth={false}>
-        <LoginPage />
-      </ProtectedRoute>
-    ),
+    element: <Navigate to="/" replace />,
   },
   {
     path: "/auth/callback",
     element: <AuthCallback />,
+  },
+  {
+    path: "/auth/reset-password",
+    element: <ResetPasswordPage />,
   },
   {
     path: "/pricing",

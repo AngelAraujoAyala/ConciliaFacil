@@ -19,20 +19,20 @@ export const ScrollytellingSection: React.FC = () => {
 
     // --- PASO 1 (Importación): 0% - 30% del scroll ---
     const opacityStep1 = useTransform(scrollYProgress, [0, 0.20, 0.30], [1, 1, 0]);
-    const scaleStep1   = useTransform(scrollYProgress, [0, 0.20, 0.30], [1, 0.95, 0.88]);
-    const yStep1       = useTransform(scrollYProgress, [0.22, 0.30],    [0, -40]);
+    const scaleStep1 = useTransform(scrollYProgress, [0, 0.20, 0.30], [1, 0.95, 0.88]);
+    const yStep1 = 0;
     const displayStep1 = useTransform(scrollYProgress, (p) => (p < 0.31 ? 'flex' : 'none'));
 
     // --- PASO 2 (Mapeo Dinámico): 32% - 68% del scroll ---
     const opacityStep2 = useTransform(scrollYProgress, [0.32, 0.42, 0.60, 0.68], [0, 1, 1, 0]);
-    const scaleStep2   = useTransform(scrollYProgress, [0.32, 0.42, 0.60, 0.68], [0.92, 1, 1, 0.92]);
-    const yStep2       = useTransform(scrollYProgress, [0.32, 0.42],              [35, 0]);
+    const scaleStep2 = useTransform(scrollYProgress, [0.32, 0.42, 0.60, 0.68], [0.92, 1, 1, 0.92]);
+    const yStep2 = 0;
     const displayStep2 = useTransform(scrollYProgress, (p) => (p >= 0.31 && p < 0.67 ? 'flex' : 'none'));
 
     // --- PASO 3 (Resultado / Conciliado): 68% - 100% del scroll ---
-    const opacityStep3 = useTransform(scrollYProgress, [0.68, 0.78, 1],  [0, 1, 1]);
-    const scaleStep3   = useTransform(scrollYProgress, [0.68, 0.78, 1],  [0.92, 1, 1]);
-    const yStep3       = useTransform(scrollYProgress, [0.68, 0.78],     [35, 0]);
+    const opacityStep3 = useTransform(scrollYProgress, [0.68, 0.78, 1], [0, 1, 1]);
+    const scaleStep3 = useTransform(scrollYProgress, [0.68, 0.78, 1], [0.92, 1, 1]);
+    const yStep3 = 0;
     const displayStep3 = useTransform(scrollYProgress, (p) => (p >= 0.67 ? 'flex' : 'none'));
 
     // Barra de progreso superior
@@ -90,19 +90,19 @@ export const ScrollytellingSection: React.FC = () => {
                              El contenedor hereda la altura del paso más alto (Paso 2).
                              No hay absolute/inset-0 → no hay colisión de layout.
                         ═══════════════════════════════════════════════════════════════ */}
-                        <div className="grid w-full">
+                        <div className="grid w-full h-95 relative items-center justify-center">
 
                             {/* ================= PASO 1 ================= */}
                             <motion.div
                                 style={{ opacity: opacityStep1, scale: scaleStep1, y: yStep1, gridArea: '1/1', display: displayStep1 }}
-                                className="flex flex-col items-center justify-center text-center px-4 py-6 pointer-events-none"
+                                className="flex flex-col items-center justify-center text-center px-4 py-2 pointer-events-none h-full"
                             >
                                 <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-4 shadow-inner">
                                     <FileSpreadsheet className="w-8 h-8" />
                                 </div>
-                                <h3 className="text-2xl font-bold text-white">Importa tus archivos sin formato</h3>
+                                <h3 className="text-2xl font-bold text-white">Importa tus archivos de movimientos bancarios</h3>
                                 <p className="text-sm text-slate-400 mt-2 max-w-md">
-                                    Arrastra cualquier extracto en formato CSV o Excel. Cero plantillas previas ni transformaciones manuales.
+                                    Arrastra cualquier extracto en formato CSV o Excel.
                                 </p>
 
                                 {/* Mockup de Dropzone animado */}
@@ -116,7 +116,7 @@ export const ScrollytellingSection: React.FC = () => {
                             {/* ================= PASO 2 ================= */}
                             <motion.div
                                 style={{ opacity: opacityStep2, scale: scaleStep2, y: yStep2, gridArea: '1/1', display: displayStep2 }}
-                                className="flex flex-col items-center justify-center text-center px-4 py-6 pointer-events-none"
+                                className="flex flex-col items-center justify-center text-center px-4 py-2 pointer-events-none h-full"
                             >
                                 <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-3 shadow-inner">
                                     <Table className="w-8 h-8" />
@@ -181,7 +181,7 @@ export const ScrollytellingSection: React.FC = () => {
                                     {[
                                         { label: 'Columna A', campo: 'Fecha', delay: '0s' },
                                         { label: 'Columna B', campo: 'Monto', delay: '0.2s' },
-                                        { label: 'Columna C', campo: 'Ref.',  delay: '0.4s' },
+                                        { label: 'Columna C', campo: 'Ref.', delay: '0.4s' },
                                     ].map(({ label, campo, delay }) => (
                                         <div key={campo} className="bg-slate-950/80 border border-purple-500/30 p-2.5 rounded-lg relative overflow-hidden">
                                             <span className="absolute inset-0 rounded-lg bg-purple-500/5 animate-pulse" style={{ animationDelay: delay }} />
@@ -199,7 +199,7 @@ export const ScrollytellingSection: React.FC = () => {
                             {/* ================= PASO 3 ================= */}
                             <motion.div
                                 style={{ opacity: opacityStep3, scale: scaleStep3, y: yStep3, gridArea: '1/1', display: displayStep3 }}
-                                className="flex flex-col items-center justify-center text-center px-4 py-6 pointer-events-none"
+                                className="flex flex-col items-center justify-center text-center px-4 py-2 pointer-events-none h-full"
                             >
                                 <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-4 shadow-inner">
                                     <CheckCircle2 className="w-8 h-8" />
