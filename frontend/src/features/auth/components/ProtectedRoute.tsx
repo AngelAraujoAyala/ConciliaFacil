@@ -2,6 +2,8 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
 
+import { LoadingPage } from '../../../components/ui/LoadingState';
+
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAuth?: boolean;
@@ -16,14 +18,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Bloqueo de UX limpio mientras Zustand/Supabase resuelven el estado de la sesión
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-600"></div>
-          <p className="text-sm font-medium text-slate-500">Verificando credenciales...</p>
-        </div>
-      </div>
-    );
+    return <LoadingPage message="Verificando credenciales..." fullscreen />;
   }
 
   // CASO 1: La ruta requiere autenticación pero el usuario NO está logueado

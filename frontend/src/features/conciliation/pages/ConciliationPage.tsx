@@ -4,6 +4,7 @@ import InvoiceUploadStep from "../components/InvoiceUploadStep";
 import ResultsTable from "../components/ResultsTable";
 import { useConciliationStore } from "../../../store/useConciliationStore";
 import { useGetProfile } from "../../dashboard/hooks/useGetProfile";
+import { LoadingPage } from "../../../components/ui/LoadingState";
 
 export default function ConciliationPage() {
   const navigate = useNavigate();
@@ -18,12 +19,7 @@ export default function ConciliationPage() {
   const setMovements = useConciliationStore((state) => state.setMovements);
 
   if (isProfileLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-600 dark:border-blue-400"></div>
-        <p className="text-gray-500 dark:text-slate-400 text-sm animate-pulse">Cargando información del perfil...</p>
-      </div>
-    );
+    return <LoadingPage message="Cargando información del perfil..." />;
   }
 
   // Interceptar si el usuario FREE ya supero el limite mensual de 3 conciliaciones
@@ -135,13 +131,12 @@ export default function ConciliationPage() {
           {/* Paso 1: Banco */}
           <div className="flex items-center space-x-2">
             <span
-              className={`flex items-center justify-center w-6 h-6 rounded-full border text-[10px] transition-all duration-200 ${
-                currentStep === "INVOICE_UPLOAD" || currentStep === "RESULTS"
-                  ? "bg-emerald-600 border-emerald-600 text-white shadow-xs"
-                  : currentStep === "BANK_UPLOAD"
-                    ? "bg-blue-50 dark:bg-blue-950/40 border-blue-600 text-blue-600 dark:text-blue-400 font-bold ring-2 ring-blue-100 dark:ring-blue-900/30"
-                    : "bg-transparent border-gray-300 dark:border-slate-700 text-gray-400 dark:text-slate-500"
-              }`}
+              className={`flex items-center justify-center w-6 h-6 rounded-full border text-[10px] transition-all duration-200 ${currentStep === "INVOICE_UPLOAD" || currentStep === "RESULTS"
+                ? "bg-emerald-600 border-emerald-600 text-white shadow-xs"
+                : currentStep === "BANK_UPLOAD"
+                  ? "bg-blue-50 dark:bg-blue-950/40 border-blue-600 text-blue-600 dark:text-blue-400 font-bold ring-2 ring-blue-100 dark:ring-blue-900/30"
+                  : "bg-transparent border-gray-300 dark:border-slate-700 text-gray-400 dark:text-slate-500"
+                }`}
             >
               {currentStep === "INVOICE_UPLOAD" || currentStep === "RESULTS" ? (
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-3 h-3">
@@ -152,13 +147,12 @@ export default function ConciliationPage() {
               )}
             </span>
             <span
-              className={`${
-                currentStep === "BANK_UPLOAD"
-                  ? "text-blue-600 dark:text-blue-400 font-bold"
-                  : currentStep === "INVOICE_UPLOAD" || currentStep === "RESULTS"
-                    ? "text-gray-800 dark:text-slate-200"
-                    : "text-gray-400 dark:text-slate-500"
-              }`}
+              className={`${currentStep === "BANK_UPLOAD"
+                ? "text-blue-600 dark:text-blue-400 font-bold"
+                : currentStep === "INVOICE_UPLOAD" || currentStep === "RESULTS"
+                  ? "text-gray-800 dark:text-slate-200"
+                  : "text-gray-400 dark:text-slate-500"
+                }`}
             >
               Banco
             </span>
@@ -169,13 +163,12 @@ export default function ConciliationPage() {
           {/* Paso 2: Facturas */}
           <div className="flex items-center space-x-2">
             <span
-              className={`flex items-center justify-center w-6 h-6 rounded-full border text-[10px] transition-all duration-200 ${
-                currentStep === "RESULTS"
-                  ? "bg-emerald-600 border-emerald-600 text-white shadow-xs"
-                  : currentStep === "INVOICE_UPLOAD"
-                    ? "bg-blue-50 dark:bg-blue-950/40 border-blue-600 text-blue-600 dark:text-blue-400 font-bold ring-2 ring-blue-100 dark:ring-blue-900/30"
-                    : "bg-transparent border-gray-300 dark:border-slate-700 text-gray-400 dark:text-slate-500"
-              }`}
+              className={`flex items-center justify-center w-6 h-6 rounded-full border text-[10px] transition-all duration-200 ${currentStep === "RESULTS"
+                ? "bg-emerald-600 border-emerald-600 text-white shadow-xs"
+                : currentStep === "INVOICE_UPLOAD"
+                  ? "bg-blue-50 dark:bg-blue-950/40 border-blue-600 text-blue-600 dark:text-blue-400 font-bold ring-2 ring-blue-100 dark:ring-blue-900/30"
+                  : "bg-transparent border-gray-300 dark:border-slate-700 text-gray-400 dark:text-slate-500"
+                }`}
             >
               {currentStep === "RESULTS" ? (
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-3 h-3">
@@ -186,13 +179,12 @@ export default function ConciliationPage() {
               )}
             </span>
             <span
-              className={`${
-                currentStep === "INVOICE_UPLOAD"
-                  ? "text-blue-600 dark:text-blue-400 font-bold"
-                  : currentStep === "RESULTS"
-                    ? "text-gray-800 dark:text-slate-200"
-                    : "text-gray-400 dark:text-slate-500"
-              }`}
+              className={`${currentStep === "INVOICE_UPLOAD"
+                ? "text-blue-600 dark:text-blue-400 font-bold"
+                : currentStep === "RESULTS"
+                  ? "text-gray-800 dark:text-slate-200"
+                  : "text-gray-400 dark:text-slate-500"
+                }`}
             >
               Facturas
             </span>
@@ -203,20 +195,18 @@ export default function ConciliationPage() {
           {/* Paso 3: Resultados */}
           <div className="flex items-center space-x-2">
             <span
-              className={`flex items-center justify-center w-6 h-6 rounded-full border text-[10px] transition-all duration-200 ${
-                currentStep === "RESULTS"
-                  ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-600 text-emerald-700 dark:text-emerald-400 font-bold ring-2 ring-emerald-100 dark:ring-emerald-900/30 shadow-xs"
-                  : "bg-transparent border-gray-300 dark:border-slate-700 text-gray-400 dark:text-slate-500"
-              }`}
+              className={`flex items-center justify-center w-6 h-6 rounded-full border text-[10px] transition-all duration-200 ${currentStep === "RESULTS"
+                ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-600 text-emerald-700 dark:text-emerald-400 font-bold ring-2 ring-emerald-100 dark:ring-emerald-900/30 shadow-xs"
+                : "bg-transparent border-gray-300 dark:border-slate-700 text-gray-400 dark:text-slate-500"
+                }`}
             >
               3
             </span>
             <span
-              className={`${
-                currentStep === "RESULTS"
-                  ? "text-emerald-700 dark:text-emerald-400 font-bold"
-                  : "text-gray-400 dark:text-slate-500"
-              }`}
+              className={`${currentStep === "RESULTS"
+                ? "text-emerald-700 dark:text-emerald-400 font-bold"
+                : "text-gray-400 dark:text-slate-500"
+                }`}
             >
               Resultados
             </span>

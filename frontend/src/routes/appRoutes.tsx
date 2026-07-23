@@ -1,5 +1,5 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
-import LandingPage from "../pages/LandingPage";
+import { ConciliaFacilLanding } from "../features/landing/page/ConciliaFacilLanding";
 import Layout from "../components/Layout";
 // Importaciones de tus componentes
 import { DashboardPage } from "../features/dashboard/pages/DashboardPage";
@@ -8,6 +8,7 @@ import { HistoryPage } from "../features/history/pages/HistoryPage";
 import { SupportPage } from "../features/support/pages/SupportPage";
 import { PricingPage } from "../features/billing/pages/PricingPage";
 import { SettingsLayout } from "../features/settings/components/SettingsLayout";
+import { SmoothScroll } from "../features/landing/components/SmoothScroll";
 
 import RegisterPage from "../features/auth/pages/RegisterPage";
 import { LoginPage } from "../features/auth/pages/LoginPage";
@@ -16,10 +17,15 @@ import AuthCallback from "../features/auth/pages/AuthCallback";
 import TerminosCondicionesPage from "../pages/TerminosCondicionesPage";
 import AvisoPrivacidadPage from "../pages/AvisoPrivacidadPage";
 
+
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <LandingPage />,
+    element: (
+      <SmoothScroll>
+        <ConciliaFacilLanding />
+      </SmoothScroll>
+    ),
   },
   {
     path: "/register",

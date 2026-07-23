@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../../api/supabase";
+import { LoadingPage } from "../../../components/ui/LoadingState";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -43,20 +44,10 @@ export default function AuthCallback() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-50 to-indigo-50/50 p-6">
-      <div className="flex flex-col items-center gap-4 text-center max-w-sm p-8 bg-white rounded-2xl shadow-xl border border-slate-100">
-        <div className="relative flex items-center justify-center">
-          {/* Spinner animado con micro-animaciones */}
-          <div className="h-16 w-16 animate-spin rounded-full border-4 border-slate-100 border-t-indigo-600" />
-          <span className="absolute text-indigo-600 text-xs font-bold">CF</span>
-        </div>
-        <h2 className="text-xl font-bold text-slate-800 mt-2">
-          Verificando tus datos...
-        </h2>
-        <p className="text-sm text-slate-500 leading-relaxed">
-          Preparando tu espacio de trabajo en ConciliaFácil. Por favor, espera un momento.
-        </p>
-      </div>
-    </div>
+    <LoadingPage
+      message="Verificando tus datos..."
+      subMessage="Preparando tu espacio de trabajo en ConciliaFácil. Por favor, espera un momento."
+      fullscreen
+    />
   );
 }
